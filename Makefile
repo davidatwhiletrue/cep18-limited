@@ -13,6 +13,9 @@ build-contract:
 	wasm-strip target/wasm32-unknown-unknown/release/cep18.wasm
 	wasm-strip target/wasm32-unknown-unknown/release/cep18_test_contract.wasm
 
+create-fixture:
+	cd tests && cargo run --release
+
 setup-test: build-contract
 	mkdir -p tests/wasm
 	cp ./target/wasm32-unknown-unknown/release/cep18.wasm tests/wasm
