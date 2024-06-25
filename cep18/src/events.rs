@@ -8,22 +8,23 @@ use crate::{
     constants::{EVENTS, EVENTS_MODE},
     modalities::EventsMode,
     utils::{read_from, SecurityBadge},
+    Cep18Error,
 };
 
 use casper_event_standard::{emit, Event, Schemas};
 
 pub fn record_event_dictionary(event: Event) {
-    let events_mode: EventsMode =
-        EventsMode::try_from(read_from::<u8>(EVENTS_MODE)).unwrap_or_revert();
+    let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
+        .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
     match events_mode {
         EventsMode::NoEvents => {}
         EventsMode::CES => ces(event),
-        EventsMode::Native => {
-            runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert()
-        }
+        EventsMode::Native => runtime::emit_message(EVENTS, &format!("{event:?}").into())
+            .unwrap_or_revert_with(Cep18Error::FailedToWriteMessage),
         EventsMode::NativeNCES => {
-            runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert();
+            runtime::emit_message(EVENTS, &format!("{event:?}").into())
+                .unwrap_or_revert_with(Cep18Error::FailedToWriteMessage);
             ces(event);
         }
     }
@@ -134,10 +135,10 @@ fn ces(event: Event) {
 }
 
 pub fn init_events() {
-    let events_mode: EventsMode =
-        EventsMode::try_from(read_from::<u8>(EVENTS_MODE)).unwrap_or_revert();
+    let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
+        .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if events_mode == EventsMode::CES {
+    if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode) {
         let schemas = Schemas::new()
             .with::<Mint>()
             .with::<Burn>()

@@ -51,6 +51,22 @@ pub enum Cep18Error {
     MissingContractHashForUpgrade = 60020,
     InvalidKeyType = 60021,
     KeyTypeMigrationMismatch = 60022,
+    FailedToWriteMessage = 60023,
+    FailedToReturnEntryPointResult = 60024,
+    FailedToRetrieveImmediateCaller = 60025,
+    FailedToCreateDictionary = 60026,
+    FailedToWriteToDictionary = 60027,
+    FailedToConvertBytes = 60028,
+    FailedToChangeBalance = 60029,
+    FailedToChangeAllowance = 60030,
+    FailedToChangeTotalSupply = 60031,
+    FailedToGetDictionaryValue = 60032,
+    FailedToManageMessages = 60033,
+    FailedToGetKey = 60034,
+    FailedToDisableContractVersion = 60035,
+    FailedToInsertToSecurityList = 60036,
+    UrefNotFound = 60037,
+    FailedToReadFromStorage = 60038,
 }
 
 impl From<Cep18Error> for ApiError {
