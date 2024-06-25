@@ -42,6 +42,7 @@ pub enum Event {
     ChangeSecurity(ChangeSecurity),
     BalanceMigration(BalanceMigration),
     AllowanceMigration(AllowanceMigration),
+    ChangeEventsMode(ChangeEventsMode)
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
@@ -119,6 +120,11 @@ pub struct AllowanceMigration {
     pub failure_map: BTreeMap<(Key, Option<Key>), String>,
 }
 
+#[derive(Event, Debug, PartialEq, Eq)]
+pub struct ChangeEventsMode {
+    pub events_mode: u8,
+}
+
 fn ces(event: Event) {
     match event {
         Event::Mint(ev) => emit(ev),
@@ -131,6 +137,7 @@ fn ces(event: Event) {
         Event::ChangeSecurity(ev) => emit(ev),
         Event::BalanceMigration(ev) => emit(ev),
         Event::AllowanceMigration(ev) => emit(ev),
+        Event::ChangeEventsMode(ev) => emit(ev),
     }
 }
 
@@ -149,7 +156,8 @@ pub fn init_events() {
             .with::<TransferFrom>()
             .with::<ChangeSecurity>()
             .with::<BalanceMigration>()
-            .with::<AllowanceMigration>();
+            .with::<AllowanceMigration>()
+            .with::<ChangeEventsMode>();
         casper_event_standard::init(schemas);
     }
 }

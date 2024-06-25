@@ -50,8 +50,7 @@ use constants::{
 };
 pub use error::Cep18Error;
 use events::{
-    init_events, AllowanceMigration, BalanceMigration, Burn, ChangeSecurity, DecreaseAllowance,
-    Event, IncreaseAllowance, Mint, SetAllowance, Transfer, TransferFrom,
+    init_events, AllowanceMigration, BalanceMigration, Burn, ChangeEventsMode, ChangeSecurity, DecreaseAllowance, Event, IncreaseAllowance, Mint, SetAllowance, Transfer, TransferFrom
 };
 use modalities::EventsMode;
 use utils::{
@@ -711,8 +710,9 @@ fn change_events_mode() {
                 .unwrap_or_revert_with(Cep18Error::FailedToManageMessages)
         }
     }
-
-    put_key(EVENTS_MODE, storage::new_uref(events_mode as u8).into());
+    let events_mode_u8 = events_mode as u8;
+    events::record_event_dictionary(Event::ChangeEventsMode(ChangeEventsMode {events_mode: events_mode_u8}));
+    put_key(EVENTS_MODE, storage::new_uref(events_mode_u8).into());
 }
 
 pub fn upgrade(name: &str) {
