@@ -696,23 +696,24 @@ pub fn migrate_sec_keys() {
 #[no_mangle]
 fn change_events_mode() {
     sec_check(vec![SecurityBadge::Admin]);
-    let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
+    let events_mode: EventsMode = EventsMode::try_from(get_named_arg::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
+    let events_mode_u8 = events_mode as u8;
+    put_key(EVENTS_MODE, storage::new_uref(events_mode_u8).into());
+    
     match events_mode {
         EventsMode::NoEvents => {}
         EventsMode::CES => init_events(),
-        EventsMode::Native => manage_message_topic(EVENTS, MessageTopicOperation::Add)
-            .unwrap_or_revert_with(Cep18Error::FailedToManageMessages),
+        EventsMode::Native => {
+            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
+        },
         EventsMode::NativeNCES => {
             init_events();
-            manage_message_topic(EVENTS, MessageTopicOperation::Add)
-                .unwrap_or_revert_with(Cep18Error::FailedToManageMessages)
+            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
         }
-    }
-    let events_mode_u8 = events_mode as u8;
+    };
     events::record_event_dictionary(Event::ChangeEventsMode(ChangeEventsMode {events_mode: events_mode_u8}));
-    put_key(EVENTS_MODE, storage::new_uref(events_mode_u8).into());
 }
 
 pub fn upgrade(name: &str) {

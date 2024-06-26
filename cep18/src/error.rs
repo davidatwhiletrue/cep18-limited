@@ -61,12 +61,11 @@ pub enum Cep18Error {
     FailedToChangeAllowance = 60030,
     FailedToChangeTotalSupply = 60031,
     FailedToGetDictionaryValue = 60032,
-    FailedToManageMessages = 60033,
+    FailedToReadFromStorage = 60033,
     FailedToGetKey = 60034,
     FailedToDisableContractVersion = 60035,
     FailedToInsertToSecurityList = 60036,
     UrefNotFound = 60037,
-    FailedToReadFromStorage = 60038,
 }
 
 impl From<Cep18Error> for ApiError {

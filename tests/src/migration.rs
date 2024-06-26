@@ -282,7 +282,7 @@ fn should_have_native_events() {
 
     assert_eq!(
         message_topic(&builder, &cep18_token, *message_topic_hash).message_count(),
-        2
+        3
     );
 
     message_summary(&builder, &cep18_token, message_topic_hash, 0, None).unwrap();
