@@ -28,7 +28,7 @@ fn should_have_have_no_events() {
         ARG_SYMBOL => TOKEN_SYMBOL,
         ARG_DECIMALS => TOKEN_DECIMALS,
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
-        EVENTS_MODE => 2_u8,
+        EVENTS_MODE => 0_u8,
         ENABLE_MINT_BURN => true,
     });
 
@@ -42,12 +42,11 @@ fn should_have_have_no_events() {
     .build();
     builder.exec(mint_request).expect_success().commit();
 
-    let entity_with_named_keys = builder
-        .get_entity_with_named_keys_by_entity_hash(addressable_cep18_token)
-        .expect("should be named key from entity hash");
-    let named_keys = entity_with_named_keys.named_keys();
-    assert!(named_keys.get("__events").is_none());
-    assert!(named_keys.get("events").is_none());
+    let entity_with_named_keys = builder.get_named_keys(casper_types::EntityAddr::SmartContract(addressable_cep18_token.value()));
+    assert!(entity_with_named_keys.get("__events").is_none());
+    let entity = entity(&builder, &addressable_cep18_token);
+    assert!(entity.message_topics().is_empty());
+
 }
 
 #[test]
