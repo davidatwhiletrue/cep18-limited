@@ -1,7 +1,7 @@
 //! Implementation details.
 use core::convert::TryInto;
 
-use alloc::{collections::BTreeMap, vec, vec::Vec};
+use alloc::{collections::BTreeMap, format, vec, vec::Vec};
 use casper_contract::{
     contract_api::{
         self,
@@ -20,7 +20,7 @@ use casper_types::{
 };
 
 use crate::{
-    constants::{SECURITY_BADGES, TOTAL_SUPPLY},
+    constants::{ERRORS, SECURITY_BADGES, TOTAL_SUPPLY},
     error::Cep18Error,
 };
 
@@ -99,7 +99,10 @@ pub fn get_named_arg_size(name: &str) -> Option<usize> {
     match api_error::result_from(ret) {
         Ok(_) => Some(arg_size),
         Err(ApiError::MissingArgument) => None,
-        Err(e) => runtime::revert(e),
+        Err(e) => {
+            runtime::emit_message(ERRORS, &format!("{e:?}").into()).unwrap_or_revert();
+            runtime::revert(e)
+        }
     }
 }
 
@@ -136,13 +139,20 @@ pub fn get_named_arg_with_user_errors<T: FromBytes>(
             api_error::result_from(ret).map(|_| data)
         };
         // Assumed to be safe as `get_named_arg_size` checks the argument already
-        res.unwrap_or_revert_with(Cep18Error::FailedToGetArgBytes)
+        res.map_err(|err| {
+            let _ = runtime::emit_message(ERRORS, &format!("{err:?}").into());
+            Cep18Error::FailedToGetArgBytes
+        })
+        .unwrap_or_revert()
     } else {
         // Avoids allocation with 0 bytes and a call to get_named_arg
         Vec::new()
     };
 
-    bytesrepr::deserialize(arg_bytes).map_err(|_| invalid)
+    bytesrepr::deserialize(arg_bytes).map_err(|err| {
+        let _ = runtime::emit_message(ERRORS, &format!("{err:?}").into());
+        invalid
+    })
 }
 
 #[repr(u8)]

@@ -9,7 +9,7 @@ use casper_types::{
 use crate::constants::{
     ADDRESS, ALLOWANCE_ENTRY_POINT_NAME, AMOUNT, APPROVE_ENTRY_POINT_NAME,
     BALANCE_OF_ENTRY_POINT_NAME, BURN_ENTRY_POINT_NAME, CHANGE_EVENTS_MODE_ENTRY_POINT_NAME,
-    CHANGE_SECURITY_ENTRY_POINT_NAME, DECIMALS_ENTRY_POINT_NAME,
+    CHANGE_SECURITY_ENTRY_POINT_NAME, CONDOR, DECIMALS_ENTRY_POINT_NAME,
     DECREASE_ALLOWANCE_ENTRY_POINT_NAME, EVENTS, EVENTS_MODE, INCREASE_ALLOWANCE_ENTRY_POINT_NAME,
     INIT_ENTRY_POINT_NAME, MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME,
     MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME, MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
@@ -17,6 +17,18 @@ use crate::constants::{
     SYMBOL_ENTRY_POINT_NAME, TOTAL_SUPPLY_ENTRY_POINT_NAME, TRANSFER_ENTRY_POINT_NAME,
     TRANSFER_FROM_ENTRY_POINT_NAME,
 };
+
+/// Returns the `condor` entry point.
+pub fn condor() -> EntryPoint {
+    EntryPoint::new(
+        String::from(CONDOR),
+        Vec::new(),
+        String::cl_type(),
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+        casper_types::EntryPointPayment::Caller,
+    )
+}
 
 /// Returns the `name` entry point.
 pub fn name() -> EntryPoint {
@@ -297,6 +309,7 @@ pub fn generate_entry_points() -> EntryPoints {
     let mut entry_points = EntryPoints::new();
     entry_points.add_entry_point(init());
     entry_points.add_entry_point(name());
+    entry_points.add_entry_point(condor());
     entry_points.add_entry_point(symbol());
     entry_points.add_entry_point(decimals());
     entry_points.add_entry_point(total_supply());

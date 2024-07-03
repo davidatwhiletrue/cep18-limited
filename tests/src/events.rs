@@ -47,7 +47,7 @@ fn should_have_have_no_events() {
     ));
     assert!(entity_with_named_keys.get("__events").is_none());
     let entity = entity(&builder, &addressable_cep18_token);
-    assert!(entity.message_topics().is_empty());
+    assert!(entity.message_topics().len() == 1);
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn should_have_native_events() {
     let (topic_name, message_topic_hash) = entity
         .message_topics()
         .iter()
-        .next()
+        .last()
         .expect("should have at least one topic");
 
     assert_eq!(topic_name, &EVENTS.to_string());
@@ -233,7 +233,7 @@ fn should_have_both_native_and_ces_events() {
     let (topic_name, message_topic_hash) = entity
         .message_topics()
         .iter()
-        .next()
+        .last()
         .expect("should have at least one topic");
 
     assert_eq!(topic_name, &EVENTS.to_string());
@@ -280,4 +280,61 @@ fn should_have_both_native_and_ces_events() {
             42, 42, 42, 42, 42, 3, 64, 66, 15
         ])
     )
+}
+
+#[test]
+fn should_test_error_message_topic_on_mint_overflow() {
+    let (
+        mut builder,
+        TestContext {
+            cep18_contract_hash,
+            ..
+        },
+    ) = setup_with_args(runtime_args! {
+        ARG_NAME => TOKEN_NAME,
+        ARG_SYMBOL => TOKEN_SYMBOL,
+        ARG_DECIMALS => TOKEN_DECIMALS,
+        ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
+        EVENTS_MODE => 0_u8,
+        ENABLE_MINT_BURN => true,
+    });
+
+    let addressable_cep18_token = AddressableEntityHash::new(cep18_contract_hash.value());
+    let entity = entity(&builder, &addressable_cep18_token);
+
+    let (topic_name, message_topic_hash) = entity
+        .message_topics()
+        .iter()
+        .last()
+        .expect("should have at least one topic");
+
+    assert_eq!(topic_name, "errors");
+
+    let mint_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        addressable_cep18_token,
+        METHOD_MINT,
+        runtime_args! {OWNER => TOKEN_OWNER_ADDRESS_1, AMOUNT => U256::MAX},
+    )
+    .build();
+
+    builder.exec(mint_request).expect_failure().commit();
+
+    assert_eq!(
+        message_topic(&builder, &addressable_cep18_token, *message_topic_hash).message_count(),
+        1
+    );
+
+    let exec_result = builder.get_exec_result_owned(2).unwrap();
+    let messages = exec_result.messages();
+    let error_message = "Cannot add to total_supply as it flow over U256::MAX value";
+    let message = Message::new(
+        casper_types::EntityAddr::SmartContract(addressable_cep18_token.value()),
+        error_message.into(),
+        "errors".to_string(),
+        *message_topic_hash,
+        0,
+        0,
+    );
+    assert_eq!(messages, &vec![message]);
 }

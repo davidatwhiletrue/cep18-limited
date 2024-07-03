@@ -248,7 +248,7 @@ fn should_have_native_events() {
     let (topic_name, message_topic_hash) = entity
         .message_topics()
         .iter()
-        .next()
+        .last()
         .expect("should have at least one topic");
 
     let mut user_map: BTreeMap<Key, bool> = BTreeMap::new();

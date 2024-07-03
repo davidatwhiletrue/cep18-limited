@@ -38,15 +38,15 @@ use casper_types::{
     addressable_entity::{EntityKindTag, NamedKeys},
     bytesrepr::ToBytes,
     contract_messages::MessageTopicOperation,
-    runtime_args, AddressableEntityHash, CLValue, EntityAddr, Key, PackageHash, U256,
+    runtime_args, AddressableEntityHash, ApiError, CLValue, EntityAddr, Key, PackageHash, U256,
 };
 
 use constants::{
     ACCESS_KEY_NAME_PREFIX, ADDRESS, ADMIN_LIST, ALLOWANCES, AMOUNT, BALANCES,
-    CHANGE_EVENTS_MODE_ENTRY_POINT_NAME, CONTRACT_HASH, CONTRACT_NAME_PREFIX,
-    CONTRACT_VERSION_PREFIX, DECIMALS, ENABLE_MINT_BURN, EVENTS, EVENTS_MODE, HASH_KEY_NAME_PREFIX,
-    INIT_ENTRY_POINT_NAME, MINTER_LIST, NAME, NONE_LIST, OWNER, PACKAGE_HASH, RECIPIENT, REVERT,
-    SECURITY_BADGES, SPENDER, SYMBOL, TOTAL_SUPPLY, USER_KEY_MAP,
+    CHANGE_EVENTS_MODE_ENTRY_POINT_NAME, CONDOR, CONTRACT_HASH, CONTRACT_NAME_PREFIX,
+    CONTRACT_VERSION_PREFIX, DECIMALS, ENABLE_MINT_BURN, ERRORS, EVENTS, EVENTS_MODE,
+    HASH_KEY_NAME_PREFIX, INIT_ENTRY_POINT_NAME, MINTER_LIST, NAME, NONE_LIST, OWNER, PACKAGE_HASH,
+    RECIPIENT, REVERT, SECURITY_BADGES, SPENDER, SYMBOL, TOTAL_SUPPLY, USER_KEY_MAP,
 };
 pub use error::Cep18Error;
 use events::{
@@ -55,9 +55,17 @@ use events::{
 };
 use modalities::EventsMode;
 use utils::{
-    get_immediate_caller_address, get_total_supply_uref, read_from, read_total_supply_from,
-    sec_check, write_total_supply_to, SecurityBadge,
+    get_immediate_caller_address, get_optional_named_arg_with_user_errors, get_total_supply_uref,
+    read_from, read_total_supply_from, sec_check, write_total_supply_to, SecurityBadge,
 };
+
+#[no_mangle]
+pub extern "C" fn condor() {
+    runtime::ret(
+        CLValue::from_t(utils::read_from::<String>(CONDOR))
+            .unwrap_or_revert_with(Cep18Error::FailedToReturnEntryPointResult),
+    );
+}
 
 #[no_mangle]
 pub extern "C" fn name() {
@@ -243,15 +251,24 @@ pub extern "C" fn mint() {
         let total_supply: U256 = read_total_supply_from(total_supply_uref);
         total_supply
             .checked_add(amount)
-            .ok_or(Cep18Error::Overflow)
-            .unwrap_or_revert_with(Cep18Error::FailedToChangeTotalSupply)
+            .ok_or(ApiError::None)
+            .map_err(|_: ApiError| {
+                runtime::emit_message(
+                    ERRORS,
+                    &"Cannot add to total_supply as it flow over U256::MAX value".into(),
+                )
+                .unwrap_or_revert();
+                Cep18Error::Overflow
+            })
+            .unwrap_or_revert()
     };
     write_balance_to(balances_uref, owner, new_balance);
     write_total_supply_to(total_supply_uref, new_total_supply);
+
     events::record_event_dictionary(Event::Mint(Mint {
         recipient: owner,
         amount,
-    }))
+    }));
 }
 
 #[no_mangle]
@@ -327,9 +344,9 @@ pub extern "C" fn init() {
     );
 
     let admin_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);
+        get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);
     let minter_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
+        get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
 
     let events_mode: EventsMode = EventsMode::try_from(get_named_arg::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
@@ -384,11 +401,11 @@ pub extern "C" fn change_security() {
     }
     sec_check(vec![SecurityBadge::Admin]);
     let admin_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);
+        get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);
     let minter_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
+        get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
     let none_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(NONE_LIST, Cep18Error::InvalidNoneList);
+        get_optional_named_arg_with_user_errors(NONE_LIST, Cep18Error::InvalidNoneList);
 
     let mut badge_map: BTreeMap<Key, SecurityBadge> = BTreeMap::new();
     if let Some(minter_list) = minter_list {
@@ -741,19 +758,16 @@ pub fn upgrade(name: &str) {
     };
     let converted_previous_contract_hash = AddressableEntityHash::new(previous_contract_hash);
 
-    let events_mode = utils::get_optional_named_arg_with_user_errors::<u8>(
-        EVENTS_MODE,
-        Cep18Error::InvalidEventsMode,
-    );
+    let events_mode =
+        get_optional_named_arg_with_user_errors::<u8>(EVENTS_MODE, Cep18Error::InvalidEventsMode);
 
     let mut message_topics = BTreeMap::new();
-
-    if let Some(mode) = events_mode {
-        let events_mode: EventsMode = mode
-            .try_into()
-            .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
-        if [EventsMode::NativeNCES, EventsMode::Native].contains(&events_mode) {
+    match get_key(CONDOR) {
+        Some(_) => {}
+        None => {
             message_topics.insert(EVENTS.to_string(), MessageTopicOperation::Add);
+            message_topics.insert(ERRORS.to_string(), MessageTopicOperation::Add);
+            put_key(CONDOR, storage::new_uref(CONDOR).into());
         }
     }
 
@@ -800,19 +814,17 @@ pub fn install_contract(name: &str) {
     let decimals: u8 = runtime::get_named_arg(DECIMALS);
     let total_supply: U256 = runtime::get_named_arg(TOTAL_SUPPLY);
     let events_mode: u8 =
-        utils::get_optional_named_arg_with_user_errors(EVENTS_MODE, Cep18Error::InvalidEventsMode)
+        get_optional_named_arg_with_user_errors(EVENTS_MODE, Cep18Error::InvalidEventsMode)
             .unwrap_or(0u8);
 
     let admin_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);
+        get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);
     let minter_list: Option<Vec<Key>> =
-        utils::get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
+        get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
 
-    let enable_mint_burn: u8 = utils::get_optional_named_arg_with_user_errors(
-        ENABLE_MINT_BURN,
-        Cep18Error::InvalidEnableMBFlag,
-    )
-    .unwrap_or(0);
+    let enable_mint_burn: u8 =
+        get_optional_named_arg_with_user_errors(ENABLE_MINT_BURN, Cep18Error::InvalidEnableMBFlag)
+            .unwrap_or(0);
 
     let mut named_keys = NamedKeys::new();
     named_keys.insert(NAME.to_string(), storage::new_uref(name).into());
@@ -832,14 +844,12 @@ pub fn install_contract(name: &str) {
     );
     let entry_points = generate_entry_points();
 
-    let message_topics = if [EventsMode::Native, EventsMode::NativeNCES]
+    let mut message_topics = BTreeMap::new();
+    message_topics.insert(ERRORS.to_string(), MessageTopicOperation::Add);
+    if [EventsMode::Native, EventsMode::NativeNCES]
         .contains(&events_mode.try_into().unwrap_or_default())
     {
-        let mut message_topics = BTreeMap::new();
         message_topics.insert(EVENTS.to_string(), MessageTopicOperation::Add);
-        Some(message_topics)
-    } else {
-        None
     };
 
     let hash_key_name = format!("{HASH_KEY_NAME_PREFIX}{name}");
@@ -848,9 +858,8 @@ pub fn install_contract(name: &str) {
         Some(named_keys),
         Some(hash_key_name.clone()),
         Some(format!("{ACCESS_KEY_NAME_PREFIX}{name}")),
-        message_topics,
+        Some(message_topics),
     );
-
     let package_hash =
         runtime::get_key(&hash_key_name).unwrap_or_revert_with(Cep18Error::FailedToGetKey);
 
@@ -877,6 +886,7 @@ pub fn install_contract(name: &str) {
             .unwrap_or_revert_with(Cep18Error::FailedToInsertToSecurityList);
     }
 
+    put_key(CONDOR, storage::new_uref(CONDOR).into());
     runtime::call_contract::<()>(contract_hash, INIT_ENTRY_POINT_NAME, init_args);
 }
 
