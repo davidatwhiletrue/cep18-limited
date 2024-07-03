@@ -253,9 +253,9 @@ fn should_transfer_from_account_by_contract() {
 
     let owner = *DEFAULT_ACCOUNT_ADDR;
 
-    let spender = Key::AddressableEntity(EntityAddr::SmartContract(
+    let spender = Key::Package(
         cep18_test_contract_package.value(),
-    ));
+    );
     let recipient = account_user_1_key;
 
     let cep18_approve_args = runtime_args! {
@@ -541,13 +541,13 @@ fn should_transfer_contract_to_contract() {
     let (default_account_user_key, _, _) = get_test_account("ACCOUNT_USER_0");
 
     let sender1 = default_account_user_key;
-    let recipient1 = Key::AddressableEntity(EntityAddr::SmartContract(
+    let recipient1 = Key::Package(
         cep18_test_contract_package.value(),
-    ));
-    let sender2 = Key::AddressableEntity(EntityAddr::SmartContract(
+    );
+    let sender2 = Key::Package(
         cep18_test_contract_package.value(),
-    ));
-    let recipient2 = Key::AddressableEntity(EntityAddr::SmartContract([42; 32]));
+    );
+    let recipient2 = Key::Package([42; 32]);
 
     test_cep18_transfer(
         &mut builder,
@@ -571,13 +571,13 @@ fn should_transfer_contract_to_account() {
     let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
     let sender1 = default_account_user_key;
-    let recipient1 = Key::AddressableEntity(EntityAddr::SmartContract(
+    let recipient1 = Key::Package(
         cep18_test_contract_package.value(),
-    ));
+    );
 
-    let sender2 = Key::AddressableEntity(EntityAddr::SmartContract(
+    let sender2 = Key::Package(
         cep18_test_contract_package.value(),
-    ));
+    );
     let recipient2 = account_user_1_key;
 
     test_cep18_transfer(
@@ -600,9 +600,9 @@ fn should_transfer_account_to_contract() {
     let sender1 = default_account_user_key;
     let recipient1 = account_user_1_key;
     let sender2 = account_user_1_key;
-    let recipient2 = Key::AddressableEntity(EntityAddr::SmartContract(
+    let recipient2 = Key::Package(
         test_context.cep18_test_contract_package.value(),
-    ));
+    );
 
     test_cep18_transfer(
         &mut builder,

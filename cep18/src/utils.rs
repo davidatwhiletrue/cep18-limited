@@ -55,7 +55,7 @@ fn call_stack_element_to_address(call_stack_element: Caller) -> Key {
             Key::AddressableEntity(EntityAddr::Account(account_hash.value()))
         }
         Caller::Entity { package_hash, .. } => {
-            Key::AddressableEntity(EntityAddr::SmartContract(package_hash.value()))
+            Key::Package(package_hash.value())
         }
     }
 }
