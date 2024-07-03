@@ -1,10 +1,15 @@
-use casper_engine_test_support::DEFAULT_ACCOUNT_ADDR;
-use casper_types::{EntityAddr, Key, U256};
+use casper_engine_test_support::{
+    utils::create_run_genesis_request, ExecuteRequestBuilder, LmdbWasmTestBuilder,
+    DEFAULT_ACCOUNTS, DEFAULT_ACCOUNT_ADDR,
+};
+use casper_execution_engine::{engine_state::Error as CoreError, execution::ExecError};
+use casper_types::{runtime_args, ApiError, EntityAddr, Key, U256};
 
 use crate::utility::{
     constants::{
-        ALLOWANCES_KEY, BALANCES_KEY, DECIMALS_KEY, NAME_KEY, SYMBOL_KEY, TOKEN_DECIMALS,
-        TOKEN_NAME, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, TOTAL_SUPPLY_KEY,
+        ALLOWANCES_KEY, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, BALANCES_KEY,
+        CEP18_CONTRACT_WASM, DECIMALS_KEY, ENABLE_MINT_BURN, EVENTS_MODE, NAME_KEY, SYMBOL_KEY,
+        TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, TOTAL_SUPPLY_KEY,
     },
     installer_request_builders::{
         cep18_check_balance_of, invert_cep18_address, setup, TestContext,
@@ -63,4 +68,38 @@ fn should_not_store_balances_or_allowances_under_account_after_install() {
 
     assert!(!named_keys.contains(BALANCES_KEY), "{:?}", named_keys);
     assert!(!named_keys.contains(ALLOWANCES_KEY), "{:?}", named_keys);
+}
+
+#[test]
+fn should_fail_with_left_over_bytes_converted_into_60006() {
+    let mut builder = LmdbWasmTestBuilder::default();
+    builder
+        .run_genesis(create_run_genesis_request(DEFAULT_ACCOUNTS.to_vec()))
+        .commit();
+
+    let install_request_1 = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        CEP18_CONTRACT_WASM,
+        runtime_args! {
+            ARG_NAME => TOKEN_NAME,
+            ARG_SYMBOL => TOKEN_SYMBOL,
+            ARG_DECIMALS => TOKEN_DECIMALS,
+            ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
+            EVENTS_MODE => Some(0_u8),
+            ENABLE_MINT_BURN => true,
+        },
+    )
+    .build();
+
+    builder.exec(install_request_1).expect_failure().commit();
+
+    let error = builder.get_error().expect("should have error");
+    assert!(
+        matches!(
+            error,
+            CoreError::Exec(ExecError::Revert(ApiError::User(60006)))
+        ),
+        "{:?}",
+        error
+    );
 }

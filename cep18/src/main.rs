@@ -767,12 +767,12 @@ pub fn upgrade(name: &str) {
     storage::disable_contract_version(contract_package_hash, converted_previous_contract_hash)
         .unwrap_or_revert_with(Cep18Error::FailedToDisableContractVersion);
 
-    if let Some(events_mode) = events_mode {
+    if let Some(events_mode_u8) = events_mode {
         call_contract::<()>(
             contract_hash,
             CHANGE_EVENTS_MODE_ENTRY_POINT_NAME,
             runtime_args! {
-                EVENTS_MODE => events_mode
+                EVENTS_MODE => events_mode_u8
             },
         );
     }
