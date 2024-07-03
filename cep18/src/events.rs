@@ -42,7 +42,7 @@ pub enum Event {
     ChangeSecurity(ChangeSecurity),
     BalanceMigration(BalanceMigration),
     AllowanceMigration(AllowanceMigration),
-    ChangeEventsMode(ChangeEventsMode)
+    ChangeEventsMode(ChangeEventsMode),
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
@@ -145,7 +145,9 @@ pub fn init_events() {
     let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode) {
+    if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode)
+        && runtime::get_key(casper_event_standard::EVENTS_DICT).is_none()
+    {
         let schemas = Schemas::new()
             .with::<Mint>()
             .with::<Burn>()

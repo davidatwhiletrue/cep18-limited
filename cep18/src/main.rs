@@ -331,7 +331,7 @@ pub extern "C" fn init() {
     let minter_list: Option<Vec<Key>> =
         utils::get_optional_named_arg_with_user_errors(MINTER_LIST, Cep18Error::InvalidMinterList);
 
-    let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
+    let events_mode: EventsMode = EventsMode::try_from(get_named_arg::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
     if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode) {
@@ -864,7 +864,7 @@ pub fn install_contract(name: &str) {
         storage::new_uref(contract_version).into(),
     );
     // Call contract to initialize it
-    let mut init_args = runtime_args! {TOTAL_SUPPLY => total_supply, PACKAGE_HASH => package_hash, CONTRACT_HASH => contract_hash_key};
+    let mut init_args = runtime_args! {TOTAL_SUPPLY => total_supply, PACKAGE_HASH => package_hash, CONTRACT_HASH => contract_hash_key, EVENTS_MODE => events_mode};
 
     if let Some(admin_list) = admin_list {
         init_args
