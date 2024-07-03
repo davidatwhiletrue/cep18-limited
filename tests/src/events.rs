@@ -42,11 +42,12 @@ fn should_have_have_no_events() {
     .build();
     builder.exec(mint_request).expect_success().commit();
 
-    let entity_with_named_keys = builder.get_named_keys(casper_types::EntityAddr::SmartContract(addressable_cep18_token.value()));
+    let entity_with_named_keys = builder.get_named_keys(casper_types::EntityAddr::SmartContract(
+        addressable_cep18_token.value(),
+    ));
     assert!(entity_with_named_keys.get("__events").is_none());
     let entity = entity(&builder, &addressable_cep18_token);
     assert!(entity.message_topics().is_empty());
-
 }
 
 #[test]

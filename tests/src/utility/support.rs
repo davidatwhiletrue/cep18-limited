@@ -18,27 +18,16 @@ pub(crate) fn get_dictionary_value_from_key<T: CLTyped + FromBytes>(
                 .expect("must have key")
                 .to_owned()
         }
-        None => match contract_key.into_account() {
-            Some(account_hash) => {
-                let entity_with_named_keys = builder
-                    .get_entity_with_named_keys_by_account_hash(account_hash)
-                    .expect("should be named key from account hash");
-                let named_keys = entity_with_named_keys.named_keys();
+        None => match contract_key.into_hash_addr() {
+            Some(contract_key) => {
+                let named_keys = builder.get_named_keys(EntityAddr::SmartContract(contract_key));
                 named_keys
                     .get(dictionary_name)
                     .expect("must have key")
                     .to_owned()
             }
             None => {
-                let named_keys = builder.get_named_keys(EntityAddr::SmartContract(
-                    contract_key
-                        .into_hash_addr()
-                        .expect("should be entity addr"),
-                ));
-                named_keys
-                    .get(dictionary_name)
-                    .expect("must have key")
-                    .to_owned()
+                panic!("unsupported dictionary location")
             }
         },
     };
