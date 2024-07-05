@@ -103,8 +103,8 @@ describe('CEP18Client', () => {
 
     expect(name).toBe(tokenInfo.name);
     expect(symbol).toBe(tokenInfo.symbol);
-    expect(decimals.eq(tokenInfo.decimals));
-    expect(totalSupply.eq(tokenInfo.totalSupply));
+    expect(decimals).toEqual(tokenInfo.decimals);
+    expect(totalSupply).toEqual(tokenInfo.totalSupply);
   });
 
   it('should construct approve args properly', () => {

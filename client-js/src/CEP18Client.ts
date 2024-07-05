@@ -2,7 +2,7 @@ import { BigNumber, type BigNumberish } from '@ethersproject/bignumber';
 import { blake2b } from '@noble/hashes/blake2b';
 import {
   CasperServiceByJsonRPC,
-  type CLKeyParameters,
+  type CLKeyVariant,
   type CLPublicKey,
   type CLU256,
   CLValueBuilder,
@@ -12,7 +12,9 @@ import {
   encodeBase64,
   GetDeployResult,
   type Keys,
-  RuntimeArgs
+  RuntimeArgs,
+  KeyEntityAddr,
+  KeyHashAddr
 } from 'casper-js-sdk';
 
 import { ContractError } from './error';
@@ -29,8 +31,15 @@ import {
 } from './types';
 
 export default class CEP18Client extends TypedContract {
-  constructor(public nodeAddress: string, public networkName: string) {
+  constructor(
+    public nodeAddress: string,
+    public networkName: string
+  ) {
     super(nodeAddress, networkName);
+  }
+
+  public setContractName(name: string) {
+    this.contractClient.setContractName(name);
   }
 
   public setContractHash(
@@ -227,6 +236,38 @@ export default class CEP18Client extends TypedContract {
   }
 
   /**
+   * Fetches allowance from owner to spender
+   * @param args @see {@link ApproveArgs}
+   * @param paymentAmount payment amount required for installing the contract
+   * @param sender deploy sender
+   * @param networkName network name which will be deployed to
+   * @param signingKeys array of signing keys optional, returns signed deploy if keys are provided
+   * @returns Deploy object which can be send to the node.
+   */
+  public allowance(
+    spender: CLKeyVariant,
+    owner: CLKeyVariant,
+    sender: CLPublicKey,
+    paymentAmount: BigNumberish,
+    networkName?: string,
+    signingKeys?: Keys.AsymmetricKey[]
+  ): DeployUtil.Deploy {
+    const runtimeArgs = RuntimeArgs.fromMap({
+      spender: CLValueBuilder.key(spender),
+      owner: CLValueBuilder.key(owner)
+    });
+
+    return this.contractClient.callEntrypoint(
+      'allowance',
+      runtimeArgs,
+      sender,
+      networkName ?? this.networkName,
+      BigNumber.from(paymentAmount).toString(),
+      signingKeys
+    );
+  }
+
+  /**
    * Decrease allowance from the spender
    * @param args @see {@link ApproveArgs}
    * @param paymentAmount payment amount required for installing the contract
@@ -390,11 +431,13 @@ export default class CEP18Client extends TypedContract {
    * @param account account info to get balance
    * @returns account's balance
    */
-  public async balanceOf(account: CLKeyParameters): Promise<BigNumber> {
-    const keyBytes = CLValueParsers.toBytes(
-      CLValueBuilder.key(account)
+  public async balanceOf(account: CLPublicKey): Promise<BigNumber> {
+    let key = CLValueParsers.toBytes(
+      CLValueBuilder.key(
+        KeyEntityAddr.account(new KeyHashAddr(account.toAccountHash()))
+      )
     ).unwrap();
-    const dictKey = encodeBase64(keyBytes);
+    const dictKey = encodeBase64(key);
     let balance = BigNumber.from(0);
     try {
       balance = (
@@ -421,12 +464,14 @@ export default class CEP18Client extends TypedContract {
    * @returns approved amount
    */
   public async allowances(
-    owner: CLKeyParameters,
-    spender: CLKeyParameters
+    owner: CLPublicKey,
+    spender: CLPublicKey
   ): Promise<BigNumber> {
-    const keyOwner = CLValueParsers.toBytes(CLValueBuilder.key(owner)).unwrap();
+    const keyOwner = CLValueParsers.toBytes(
+      CLValueBuilder.key(owner.toAccountHashType())
+    ).unwrap();
     const keySpender = CLValueParsers.toBytes(
-      CLValueBuilder.key(spender)
+      CLValueBuilder.key(spender.toAccountHashType())
     ).unwrap();
 
     const finalBytes = new Uint8Array(keyOwner.length + keySpender.length);
@@ -439,7 +484,8 @@ export default class CEP18Client extends TypedContract {
     const dictKey = encodeBase16(blaked);
 
     let allowances = BigNumber.from(0);
-
+    console.error(`contract hash ${this.contractClient.contractHash}`);
+    console.error(`dictKey ${dictKey}`);
     try {
       allowances = (
         (await this.contractClient.queryContractDictionary(
@@ -455,6 +501,7 @@ export default class CEP18Client extends TypedContract {
         console.warn(`Not found allowances for ${encodeBase16(owner.data)}`);
       } else throw error;
     }
+
     return allowances;
   }
 
@@ -523,11 +570,13 @@ export default class CEP18Client extends TypedContract {
 
     const result = await casperClient.getDeployInfo(deployHash);
     if (
-      result.execution_results.length > 0 &&
-      result.execution_results[0].result.Failure
+      result.execution_info &&
+      result.execution_info.execution_result &&
+      'Version2' in result.execution_info.execution_result &&
+      result.execution_info.execution_result.Version2.error_message
     ) {
       // Parse execution result
-      const { error_message } = result.execution_results[0].result.Failure;
+      const { error_message } = result.execution_info.execution_result.Version2;
       const contractErrorMessagePrefix = 'User error: ';
       if (error_message.startsWith(contractErrorMessagePrefix)) {
         const errorCode = parseInt(

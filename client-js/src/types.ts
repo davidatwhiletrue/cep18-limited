@@ -1,9 +1,11 @@
 import { type BigNumberish } from '@ethersproject/bignumber';
-import { type CLKeyParameters } from 'casper-js-sdk';
+import { type CLKeyVariant } from 'casper-js-sdk';
 
 export enum EVENTS_MODE {
   NoEvents = 0,
-  CES = 1
+  CES = 1,
+  Native = 2,
+  NativeNCES = 3
 }
 
 export interface InstallArgs {
@@ -26,29 +28,29 @@ export interface TransferableArgs {
 }
 
 export interface TransferArgs extends TransferableArgs {
-  recipient: CLKeyParameters;
+  recipient: CLKeyVariant;
 }
 
 export interface TransferFromArgs extends TransferArgs {
-  owner: CLKeyParameters;
+  owner: CLKeyVariant;
 }
 
 export interface ApproveArgs extends TransferableArgs {
-  spender: CLKeyParameters;
+  spender: CLKeyVariant;
 }
 
 export interface MintArgs extends TransferableArgs {
-  owner: CLKeyParameters;
+  owner: CLKeyVariant;
 }
 
 export interface BurnArgs extends TransferableArgs {
-  owner: CLKeyParameters;
+  owner: CLKeyVariant;
 }
 
 export interface ChangeSecurityArgs {
-  adminList?: CLKeyParameters[];
-  minterList?: CLKeyParameters[];
-  burnerList?: CLKeyParameters[];
-  mintAndBurnList?: CLKeyParameters[];
-  noneList?: CLKeyParameters[];
+  adminList?: CLKeyVariant[];
+  minterList?: CLKeyVariant[];
+  burnerList?: CLKeyVariant[];
+  mintAndBurnList?: CLKeyVariant[];
+  noneList?: CLKeyVariant[];
 }

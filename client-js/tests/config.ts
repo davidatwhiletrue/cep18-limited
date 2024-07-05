@@ -22,10 +22,17 @@ export enum AVAILABLE_NETWORKS {
 export type AVALIABLE_NETWORKS_TYPE = keyof typeof AVAILABLE_NETWORKS;
 
 export const NETWORK_NAME = process.env.NETWORK_NAME || AVAILABLE_NETWORKS.NCTL;
-
+let user1PrivateKey = process.env.PRIVATE_KEY_1;
+let user2PrivateKey = process.env.PRIVATE_KEY_2;
+let user3PrivateKey = process.env.PRIVATE_KEY_3;
+let user4PrivateKey = process.env.PRIVATE_KEY_4;
 export const users = [
-  'MC4CAQAwBQYDK2VwBCIEII8ULlk1CJ12ZQ+bScjBt/IxMAZNggClWqK56D1/7CbI',
-  'MC4CAQAwBQYDK2VwBCIEIJTD9IlUYzuMHbvAiFel/uqd6V7vUtUD19IEQlo6SAFC',
-  'MC4CAQAwBQYDK2VwBCIEILMuHWPyN8puln9EVgsoVidgHW7V+eSKWorDLOABQnz4',
-  'MC4CAQAwBQYDK2VwBCIEIBYTk4Pc0Q6F3okf21hVWWJoGzQhuY86aRXjwdO1kYBK'
+  user1PrivateKey ||
+    'MC4CAQAwBQYDK2VwBCIEIHXOwJHjA8HOUyTbwSkOzr1fMs8xwZEPA0WKIirinpJN',
+  user2PrivateKey ||
+    'MC4CAQAwBQYDK2VwBCIEIBgnpnZJKm1IfqxBrox9YXlVQj1SKtmLcrH/87BtPn1A',
+  user3PrivateKey ||
+    'MC4CAQAwBQYDK2VwBCIEIFYDqfKsNDiNGAaWjrYITd/yqUR8uROvnGV7X9LJWFW8',
+  user4PrivateKey ||
+    'MC4CAQAwBQYDK2VwBCIEINYDd5NtDYmq1HWTX7XJA9LZKY6kzPjHPu7H8Kz6sCda'
 ].map(key => Keys.getKeysFromHexPrivKey(key, Keys.SignatureAlgorithm.Ed25519));

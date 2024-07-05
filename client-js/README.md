@@ -1,5 +1,7 @@
 # `casper-cep18-js-client`
 
+# TODO fix ces-js-parser dependency (we are using native events currently)
+
 This JavaScript client gives you an easy way to install and interact with the Casper CEP-18 contract.
 
 ## Installation
