@@ -693,7 +693,7 @@ pub fn migrate_sec_keys() {
         let sec: SecurityBadge = named_dictionary_get(SECURITY_BADGES, &old_encoded_user_sec_key)
             .unwrap_or_revert_with(Cep18Error::FailedToGetDictionaryValue)
             .unwrap_or(SecurityBadge::None);
-        if ![SecurityBadge::Admin, SecurityBadge::Minter].contains(&sec) {
+        if [SecurityBadge::Admin, SecurityBadge::Minter].contains(&sec) {
             named_dictionary_put(SECURITY_BADGES, &migrated_encoded_user_sec_key, sec);
         } else if event_on {
             failure_map.insert(old_key, String::from("NoValidBadge"));
