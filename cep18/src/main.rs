@@ -601,14 +601,14 @@ pub fn migrate_user_allowance_keys() {
                 }
             };
             let old_allowance =
-                read_allowance_from(allowances_uref, migrated_owner_key, migrated_spender_key);
+                read_allowance_from(allowances_uref, owner_key, spender_key);
             if old_allowance > U256::zero() {
                 let new_key_existing_allowance =
                     read_allowance_from(allowances_uref, migrated_owner_key, migrated_spender_key);
                 write_allowance_to(
                     allowances_uref,
-                    migrated_owner_key,
-                    migrated_spender_key,
+                    owner_key,
+                    spender_key,
                     U256::zero(),
                 );
                 write_allowance_to(
