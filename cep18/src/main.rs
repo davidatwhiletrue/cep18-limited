@@ -472,7 +472,7 @@ pub fn migrate_user_balance_keys() {
                     }
                     continue;
                 }
-                Key::AddressableEntity(EntityAddr::SmartContract(contract_package))
+                Key::Package(contract_package)
             }
             _ => {
                 if event_on {
@@ -547,7 +547,7 @@ pub fn migrate_user_allowance_keys() {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
                 }
-                Key::AddressableEntity(EntityAddr::SmartContract(contract_package))
+                Key::Package(contract_package)
             }
             _ => {
                 if event_on {
@@ -586,7 +586,7 @@ pub fn migrate_user_allowance_keys() {
                             revert(Cep18Error::KeyTypeMigrationMismatch)
                         }
                     }
-                    Key::AddressableEntity(EntityAddr::SmartContract(contract_package))
+                    Key::Package(contract_package)
                 }
                 _ => {
                     if event_on {
@@ -669,7 +669,7 @@ pub fn migrate_sec_keys() {
                     }
                     continue;
                 }
-                Key::AddressableEntity(EntityAddr::SmartContract(contract_package))
+                Key::Package(contract_package)
             }
             _ => {
                 if event_on {
