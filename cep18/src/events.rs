@@ -21,10 +21,10 @@ pub fn record_event_dictionary(event: Event) {
         EventsMode::NoEvents => {}
         EventsMode::CES => ces(event),
         EventsMode::Native => runtime::emit_message(EVENTS, &format!("{event:?}").into())
-            .unwrap_or_revert_with(Cep18Error::FailedToWriteMessage),
+            .unwrap_or_revert(),
         EventsMode::NativeNCES => {
             runtime::emit_message(EVENTS, &format!("{event:?}").into())
-                .unwrap_or_revert_with(Cep18Error::FailedToWriteMessage);
+                .unwrap_or_revert();
             ces(event);
         }
     }
