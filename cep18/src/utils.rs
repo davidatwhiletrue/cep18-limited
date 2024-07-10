@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, format, vec, vec::Vec};
 use casper_contract::{
     contract_api::{
         self,
-        runtime::{self, revert},
+        runtime::{self, get_named_arg, revert},
         storage::{self, dictionary_get, dictionary_put},
     },
     ext_ffi,
@@ -20,7 +20,9 @@ use casper_types::{
 };
 
 use crate::{
-    constants::{ERRORS, SECURITY_BADGES, TOTAL_SUPPLY},
+    allowances::{read_allowance_from, write_allowance_to},
+    balances::{get_balances_uref, read_balance_from, write_balance_to},
+    constants::{ERRORS, LAZY_MIGRATE, SECURITY_BADGES, TOTAL_SUPPLY},
     error::Cep18Error,
 };
 
@@ -253,4 +255,73 @@ pub fn change_sec_badge(badge_map: &BTreeMap<Key, SecurityBadge>) {
             badge,
         )
     }
+}
+
+pub fn lazy_migrate_balance(balances_uref: URef, new_user_key: Key) {
+    let legacy_user = match new_user_key {
+        Key::Package(hash) => Key::Hash(hash),
+        Key::AddressableEntity(EntityAddr::Account(account)) => {
+            Key::Account(AccountHash::new(account))
+        }
+        _ => revert(Cep18Error::InvalidKeyType),
+    };
+    let mut new_account_existing_balance = read_balance_from(balances_uref, new_user_key);
+    let legacy_account_balance = read_balance_from(balances_uref, legacy_user);
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(legacy_account_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    write_balance_to(balances_uref, new_user_key, new_account_existing_balance);
+    write_balance_to(balances_uref, legacy_user, U256::zero());
+}
+
+pub fn lazy_migrate_allowance(allowances_uref: URef, new_owner_key: Key, new_spender_key: Key) {
+    let legacy_owner = match new_owner_key {
+        Key::Package(hash) => Key::Hash(hash),
+        Key::AddressableEntity(EntityAddr::Account(account)) => {
+            Key::Account(AccountHash::new(account))
+        }
+        _ => revert(Cep18Error::InvalidKeyType),
+    };
+    let legacy_spender = match new_spender_key {
+        Key::Package(hash) => Key::Hash(hash),
+        Key::AddressableEntity(EntityAddr::Account(account)) => {
+            Key::Account(AccountHash::new(account))
+        }
+        _ => revert(Cep18Error::InvalidKeyType),
+    };
+    let mut new_account_existing_balance =
+        read_allowance_from(allowances_uref, new_owner_key, new_spender_key);
+    let legacy_owner_legacy_spender_balance =
+        read_allowance_from(allowances_uref, legacy_owner, legacy_spender);
+    let legacy_owner_new_spender_balance =
+        read_allowance_from(allowances_uref, legacy_owner, new_spender_key);
+    let new_owner_legacy_spender_balance =
+        read_allowance_from(allowances_uref, new_owner_key, legacy_spender);
+
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(legacy_owner_legacy_spender_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(legacy_owner_new_spender_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(new_owner_legacy_spender_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    if new_account_existing_balance > read_balance_from(get_balances_uref(), new_owner_key) {
+        revert(Cep18Error::InsufficientMigratedBalance);
+    }
+
+    write_allowance_to(
+        allowances_uref,
+        new_owner_key,
+        new_spender_key,
+        new_account_existing_balance,
+    );
+    write_allowance_to(allowances_uref, legacy_owner, legacy_spender, U256::zero());
+    write_allowance_to(allowances_uref, legacy_owner, new_spender_key, U256::zero());
+    write_allowance_to(allowances_uref, new_owner_key, legacy_spender, U256::zero());
 }

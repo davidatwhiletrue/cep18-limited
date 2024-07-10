@@ -79,3 +79,4 @@ pub const EVENTS_MODE: &str = "events_mode";
 pub const MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_balance_keys";
 pub const _MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_allowance_keys";
 pub const MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME: &str = "migrate_sec_keys";
+pub const LAZY_MIGRATE: &str = "lazy_migrate";

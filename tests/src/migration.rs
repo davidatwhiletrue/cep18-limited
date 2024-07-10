@@ -13,7 +13,7 @@ use crate::utility::{
     constants::{
         AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CEP18_CONTRACT_WASM,
         CEP18_TEST_CONTRACT_WASM, CEP18_TOKEN_CONTRACT_KEY, CEP18_TOKEN_CONTRACT_VERSION_KEY,
-        EVENTS, EVENTS_MODE, METHOD_MINT, MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME,
+        EVENTS, EVENTS_MODE, LAZY_MIGRATE, METHOD_MINT, MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME,
         MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME, OWNER, REVERT, TOKEN_DECIMALS, TOKEN_NAME,
         TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_ADDRESS_1_OLD, TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL,
         TOKEN_TOTAL_SUPPLY, USER_KEY_MAP,
@@ -286,4 +286,66 @@ fn should_have_native_events() {
     );
 
     message_summary(&builder, &cep18_token, message_topic_hash, 0, None).unwrap();
+}
+
+#[test]
+fn should_lazy_migrate_on_mint() {
+    // load fixture
+    let (mut builder, lmdb_fixture_state, _temp_dir) =
+        casper_fixtures::builder_from_global_state_fixture("cep18-1.5.6-minted");
+
+    // upgrade engine
+    upgrade_v1_5_6_fixture_to_v2_0_0_ee(&mut builder, &lmdb_fixture_state);
+
+    let version_0: u32 =
+        query_contract_value(&builder, &[CEP18_TOKEN_CONTRACT_VERSION_KEY.to_string()]);
+
+    // upgrade the contract itself using a binary built for the new engine
+    let upgrade_request = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        CEP18_CONTRACT_WASM,
+        runtime_args! {
+            ARG_NAME => TOKEN_NAME,
+            ARG_SYMBOL => TOKEN_SYMBOL,
+            ARG_DECIMALS => TOKEN_DECIMALS,
+            ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
+            EVENTS_MODE => 3_u8
+        },
+    )
+    .build();
+
+    builder.exec(upgrade_request).expect_success().commit();
+
+    let version_1: u32 =
+        query_contract_value(&builder, &[CEP18_TOKEN_CONTRACT_VERSION_KEY.to_string()]);
+
+    assert!(version_0 < version_1);
+
+    let cep18_contract_hash = get_contract_hash_v2_binary(&builder);
+
+    // mint some new tokens in cep-18
+    let mint_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        cep18_contract_hash,
+        METHOD_MINT,
+        runtime_args! {LAZY_MIGRATE => true, OWNER => TOKEN_OWNER_ADDRESS_1, AMOUNT => U256::from(TOKEN_OWNER_AMOUNT_1)},
+    )
+    .build();
+
+    builder.exec(mint_request).expect_success().commit();
+
+    let test_contract = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        CEP18_TEST_CONTRACT_WASM,
+        RuntimeArgs::default(),
+    )
+    .build();
+
+    builder.exec(test_contract).expect_success().commit();
+
+    // even if we minted before migrating, the balance should persist
+    assert_eq!(
+        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_1),
+        U256::from(TOKEN_OWNER_AMOUNT_1 * 2),
+    );
 }

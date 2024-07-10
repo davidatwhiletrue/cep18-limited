@@ -20,22 +20,24 @@ pub fn record_event_dictionary(event: Event) {
     match events_mode {
         EventsMode::NoEvents => {}
         EventsMode::CES => ces(event),
-        EventsMode::Native => runtime::emit_message(EVENTS, &format!("{event:?}").into())
-            .unwrap_or_revert(),
+        EventsMode::Native => {
+            runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert()
+        }
         EventsMode::NativeBytes => {
-            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes()).unwrap_or_revert().0;
-            runtime::emit_message(EVENTS, &payload)
-            .unwrap_or_revert()
-        },
+            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes())
+                .unwrap_or_revert()
+                .0;
+            runtime::emit_message(EVENTS, &payload).unwrap_or_revert()
+        }
         EventsMode::NativeNCES => {
-            runtime::emit_message(EVENTS, &format!("{event:?}").into())
-                .unwrap_or_revert();
+            runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert();
             ces(event);
-        },
+        }
         EventsMode::NativeBytesNCES => {
-            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes()).unwrap_or_revert().0;
-            runtime::emit_message(EVENTS, &payload)
-            .unwrap_or_revert();
+            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes())
+                .unwrap_or_revert()
+                .0;
+            runtime::emit_message(EVENTS, &payload).unwrap_or_revert();
             ces(event);
         }
     }
@@ -133,7 +135,12 @@ pub fn init_events() {
     let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if [EventsMode::CES, EventsMode::NativeNCES, EventsMode::NativeBytesNCES].contains(&events_mode)
+    if [
+        EventsMode::CES,
+        EventsMode::NativeNCES,
+        EventsMode::NativeBytesNCES,
+    ]
+    .contains(&events_mode)
         && runtime::get_key(casper_event_standard::EVENTS_DICT).is_none()
     {
         let schemas = Schemas::new()

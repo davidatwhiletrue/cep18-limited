@@ -42,21 +42,16 @@ use casper_types::{
 };
 
 use constants::{
-    ACCESS_KEY_NAME_PREFIX, ADDRESS, ADMIN_LIST, ALLOWANCES, AMOUNT, BALANCES,
-    CHANGE_EVENTS_MODE_ENTRY_POINT_NAME, CONDOR, CONTRACT_HASH, CONTRACT_NAME_PREFIX,
-    CONTRACT_VERSION_PREFIX, DECIMALS, ENABLE_MINT_BURN, ERRORS, EVENTS, EVENTS_MODE,
-    HASH_KEY_NAME_PREFIX, INIT_ENTRY_POINT_NAME, MINTER_LIST, NAME, NONE_LIST, OWNER, PACKAGE_HASH,
-    RECIPIENT, REVERT, SECURITY_BADGES, SPENDER, SYMBOL, TOTAL_SUPPLY, USER_KEY_MAP,
+    ACCESS_KEY_NAME_PREFIX, ADDRESS, ADMIN_LIST, ALLOWANCES, AMOUNT, BALANCES, CHANGE_EVENTS_MODE_ENTRY_POINT_NAME, CONDOR, CONTRACT_HASH, CONTRACT_NAME_PREFIX, CONTRACT_VERSION_PREFIX, DECIMALS, ENABLE_MINT_BURN, ERRORS, EVENTS, EVENTS_MODE, HASH_KEY_NAME_PREFIX, INIT_ENTRY_POINT_NAME, LAZY_MIGRATE, MINTER_LIST, NAME, NONE_LIST, OWNER, PACKAGE_HASH, RECIPIENT, REVERT, SECURITY_BADGES, SPENDER, SYMBOL, TOTAL_SUPPLY, USER_KEY_MAP
 };
 pub use error::Cep18Error;
 use events::{
-    init_events, Burn, ChangeEventsMode, ChangeSecurity,
-    DecreaseAllowance, Event, IncreaseAllowance, Mint, SetAllowance, Transfer, TransferFrom,
+    init_events, Burn, ChangeEventsMode, ChangeSecurity, DecreaseAllowance, Event,
+    IncreaseAllowance, Mint, SetAllowance, Transfer, TransferFrom,
 };
 use modalities::EventsMode;
 use utils::{
-    get_immediate_caller_address, get_optional_named_arg_with_user_errors, get_total_supply_uref,
-    read_from, read_total_supply_from, sec_check, write_total_supply_to, SecurityBadge,
+    get_immediate_caller_address, get_named_arg_with_user_errors, get_optional_named_arg_with_user_errors, get_total_supply_uref, lazy_migrate_allowance, lazy_migrate_balance, read_from, read_total_supply_from, sec_check, write_total_supply_to, SecurityBadge
 };
 
 #[no_mangle]
@@ -103,6 +98,9 @@ pub extern "C" fn total_supply() {
 pub extern "C" fn balance_of() {
     let address: Key = runtime::get_named_arg(ADDRESS);
     let balances_uref = get_balances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        lazy_migrate_balance(balances_uref, address);
+    }
     let balance = balances::read_balance_from(balances_uref, address);
     runtime::ret(
         CLValue::from_t(balance).unwrap_or_revert_with(Cep18Error::FailedToReturnEntryPointResult),
@@ -114,6 +112,12 @@ pub extern "C" fn allowance() {
     let spender: Key = runtime::get_named_arg(SPENDER);
     let owner: Key = runtime::get_named_arg(OWNER);
     let allowances_uref = get_allowances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        let balances_uref = get_balances_uref();
+        lazy_migrate_balance(balances_uref, owner);
+        lazy_migrate_balance(balances_uref, spender);
+        lazy_migrate_allowance(allowances_uref, owner, spender);
+    }
     let val: U256 = read_allowance_from(allowances_uref, owner, spender);
     runtime::ret(
         CLValue::from_t(val).unwrap_or_revert_with(Cep18Error::FailedToReturnEntryPointResult),
@@ -130,6 +134,12 @@ pub extern "C" fn approve() {
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let allowances_uref = get_allowances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        let balances_uref = get_balances_uref();
+        lazy_migrate_balance(balances_uref, owner);
+        lazy_migrate_balance(balances_uref, spender);
+        lazy_migrate_allowance(allowances_uref, owner, spender);
+    }
     write_allowance_to(allowances_uref, owner, spender, amount);
     events::record_event_dictionary(Event::SetAllowance(SetAllowance {
         owner,
@@ -148,6 +158,12 @@ pub extern "C" fn decrease_allowance() {
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let allowances_uref = get_allowances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        let balances_uref = get_balances_uref();
+        lazy_migrate_balance(balances_uref, owner);
+        lazy_migrate_balance(balances_uref, spender);
+        lazy_migrate_allowance(allowances_uref, owner, spender);
+    }
     let current_allowance = read_allowance_from(allowances_uref, owner, spender);
     let new_allowance = current_allowance.saturating_sub(amount);
     write_allowance_to(allowances_uref, owner, spender, new_allowance);
@@ -169,6 +185,12 @@ pub extern "C" fn increase_allowance() {
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let allowances_uref = get_allowances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        let balances_uref = get_balances_uref();
+        lazy_migrate_balance(balances_uref, owner);
+        lazy_migrate_balance(balances_uref, spender);
+        lazy_migrate_allowance(allowances_uref, owner, spender);
+    }
     let current_allowance = read_allowance_from(allowances_uref, owner, spender);
     let new_allowance = current_allowance.saturating_add(amount);
     write_allowance_to(allowances_uref, owner, spender, new_allowance);
@@ -188,6 +210,12 @@ pub extern "C" fn transfer() {
     if sender == recipient {
         revert(Cep18Error::CannotTargetSelfUser);
     }
+    let balances_uref = get_balances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        lazy_migrate_balance(balances_uref, sender);
+        lazy_migrate_balance(balances_uref, recipient);
+    }
+
     let amount: U256 = runtime::get_named_arg(AMOUNT);
 
     transfer_balance(sender, recipient, amount).unwrap_or_revert();
@@ -211,8 +239,13 @@ pub extern "C" fn transfer_from() {
     if amount.is_zero() {
         return;
     }
-
     let allowances_uref = get_allowances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        let balances_uref = get_balances_uref();
+        lazy_migrate_balance(balances_uref, owner);
+        lazy_migrate_balance(balances_uref, recipient);
+        lazy_migrate_allowance(allowances_uref, owner, spender);
+    }
     let spender_allowance: U256 = read_allowance_from(allowances_uref, owner, spender);
     let new_spender_allowance = spender_allowance
         .checked_sub(amount)
@@ -237,9 +270,13 @@ pub extern "C" fn mint() {
     sec_check(vec![SecurityBadge::Admin, SecurityBadge::Minter]);
 
     let owner: Key = runtime::get_named_arg(OWNER);
-    let amount: U256 = runtime::get_named_arg(AMOUNT);
 
     let balances_uref = get_balances_uref();
+    if get_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::MissingLazyMigrate, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        lazy_migrate_balance(balances_uref, owner);
+    }
+
+    let amount: U256 = runtime::get_named_arg(AMOUNT);
     let total_supply_uref = get_total_supply_uref();
     let new_balance = {
         let balance = read_balance_from(balances_uref, owner);
@@ -286,8 +323,12 @@ pub extern "C" fn burn() {
         revert(Cep18Error::InvalidBurnTarget);
     }
 
-    let amount: U256 = runtime::get_named_arg(AMOUNT);
     let balances_uref = get_balances_uref();
+    if get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidLazyMigrate).unwrap_or_default(){
+        lazy_migrate_balance(balances_uref, owner);
+    }
+
+    let amount: U256 = runtime::get_named_arg(AMOUNT);
     let total_supply_uref = get_total_supply_uref();
     let new_balance = {
         let balance = read_balance_from(balances_uref, owner);
@@ -555,17 +596,11 @@ pub fn migrate_user_allowance_keys() {
                     continue;
                 }
             };
-            let old_allowance =
-                read_allowance_from(allowances_uref, owner_key, spender_key);
+            let old_allowance = read_allowance_from(allowances_uref, owner_key, spender_key);
             if old_allowance > U256::zero() {
                 let new_key_existing_allowance =
                     read_allowance_from(allowances_uref, migrated_owner_key, migrated_spender_key);
-                write_allowance_to(
-                    allowances_uref,
-                    owner_key,
-                    spender_key,
-                    U256::zero(),
-                );
+                write_allowance_to(allowances_uref, owner_key, spender_key, U256::zero());
                 write_allowance_to(
                     allowances_uref,
                     migrated_owner_key,
@@ -653,11 +688,11 @@ fn change_events_mode() {
         }
         EventsMode::NativeBytes => {
             let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
-        },
+        }
         EventsMode::NativeBytesNCES => {
             init_events();
             let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
-        },
+        }
     };
     events::record_event_dictionary(Event::ChangeEventsMode(ChangeEventsMode {
         events_mode: events_mode_u8,
@@ -774,8 +809,12 @@ pub fn install_contract(name: &str) {
 
     let mut message_topics = BTreeMap::new();
     message_topics.insert(ERRORS.to_string(), MessageTopicOperation::Add);
-    if [EventsMode::Native, EventsMode::NativeNCES, EventsMode::NativeBytesNCES]
-        .contains(&events_mode.try_into().unwrap_or_default())
+    if [
+        EventsMode::Native,
+        EventsMode::NativeNCES,
+        EventsMode::NativeBytesNCES,
+    ]
+    .contains(&events_mode.try_into().unwrap_or_default())
     {
         message_topics.insert(EVENTS.to_string(), MessageTopicOperation::Add);
     };

@@ -66,6 +66,9 @@ pub enum Cep18Error {
     FailedToDisableContractVersion = 60035,
     FailedToInsertToSecurityList = 60036,
     UrefNotFound = 60037,
+    InvalidLazyMigrate = 60038,
+    InsufficientMigratedBalance = 60039,
+    MissingLazyMigrate = 60040,
 }
 
 impl From<Cep18Error> for ApiError {

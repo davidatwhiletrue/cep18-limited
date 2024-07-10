@@ -75,3 +75,4 @@ pub const MINTER_LIST: &str = "minter_list";
 pub const NONE_LIST: &str = "none_list";
 pub const ENABLE_MINT_BURN: &str = "enable_mint_burn";
 pub const USER_KEY_MAP: &str = "user_key_map";
+pub const LAZY_MIGRATE: &str = "lazy_migrate";
