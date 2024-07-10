@@ -1,8 +1,8 @@
 use core::convert::TryFrom;
 
-use alloc::{collections::BTreeMap, format, string::String, vec::Vec};
+use alloc::{collections::BTreeMap, format};
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
-use casper_types::{Key, U256};
+use casper_types::{bytesrepr::FromBytes, contract_messages::MessagePayload, Key, U256};
 
 use crate::{
     constants::{EVENTS, EVENTS_MODE},
@@ -22,9 +22,20 @@ pub fn record_event_dictionary(event: Event) {
         EventsMode::CES => ces(event),
         EventsMode::Native => runtime::emit_message(EVENTS, &format!("{event:?}").into())
             .unwrap_or_revert(),
+        EventsMode::NativeBytes => {
+            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes()).unwrap_or_revert().0;
+            runtime::emit_message(EVENTS, &payload)
+            .unwrap_or_revert()
+        },
         EventsMode::NativeNCES => {
             runtime::emit_message(EVENTS, &format!("{event:?}").into())
                 .unwrap_or_revert();
+            ces(event);
+        },
+        EventsMode::NativeBytesNCES => {
+            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes()).unwrap_or_revert().0;
+            runtime::emit_message(EVENTS, &payload)
+            .unwrap_or_revert();
             ces(event);
         }
     }
@@ -40,8 +51,6 @@ pub enum Event {
     Transfer(Transfer),
     TransferFrom(TransferFrom),
     ChangeSecurity(ChangeSecurity),
-    BalanceMigration(BalanceMigration),
-    AllowanceMigration(AllowanceMigration),
     ChangeEventsMode(ChangeEventsMode),
 }
 
@@ -101,25 +110,6 @@ pub struct ChangeSecurity {
     pub sec_change_map: BTreeMap<Key, SecurityBadge>,
 }
 
-/// `success_list` -> Vec<(Key,Key)> where the tuple is the pair of old_key and new_key.
-/// `failure_map` -> BTreeMap<Key, String> where the key is the provided old_key, and the String
-/// value is the failure reason, while the String is the failure reason.
-#[derive(Event, Debug, PartialEq, Eq)]
-pub struct BalanceMigration {
-    pub success_map: Vec<(Key, Key)>,
-    pub failure_map: BTreeMap<Key, String>,
-}
-
-/// `success_list` -> Vec<(Key,Key)> where one tuple is the pair of old_key and new_key for the
-/// spender and another is the same for owner.
-/// `failure_map` -> BTreeMap<(Key,Key), String> where the Key tuples is the pair of old_spender_key
-/// and old_owner_key, while the String is the failure reason.
-#[derive(Event, Debug, PartialEq, Eq)]
-pub struct AllowanceMigration {
-    pub success_map: Vec<((Key, Key), (Key, Key))>,
-    pub failure_map: BTreeMap<(Key, Option<Key>), String>,
-}
-
 #[derive(Event, Debug, PartialEq, Eq)]
 pub struct ChangeEventsMode {
     pub events_mode: u8,
@@ -135,8 +125,6 @@ fn ces(event: Event) {
         Event::Transfer(ev) => emit(ev),
         Event::TransferFrom(ev) => emit(ev),
         Event::ChangeSecurity(ev) => emit(ev),
-        Event::BalanceMigration(ev) => emit(ev),
-        Event::AllowanceMigration(ev) => emit(ev),
         Event::ChangeEventsMode(ev) => emit(ev),
     }
 }
@@ -145,7 +133,7 @@ pub fn init_events() {
     let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode)
+    if [EventsMode::CES, EventsMode::NativeNCES, EventsMode::NativeBytesNCES].contains(&events_mode)
         && runtime::get_key(casper_event_standard::EVENTS_DICT).is_none()
     {
         let schemas = Schemas::new()
@@ -157,8 +145,6 @@ pub fn init_events() {
             .with::<Transfer>()
             .with::<TransferFrom>()
             .with::<ChangeSecurity>()
-            .with::<BalanceMigration>()
-            .with::<AllowanceMigration>()
             .with::<ChangeEventsMode>();
         casper_event_standard::init(schemas);
     }

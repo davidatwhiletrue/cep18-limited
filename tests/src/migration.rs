@@ -157,13 +157,12 @@ fn should_migrate_1_5_6_to_2_0_0_rc3() {
     // use utility entrypoint to migrate the security keys in cep-18
     let mut user_map: BTreeMap<Key, bool> = BTreeMap::new();
     user_map.insert(Key::Account(*DEFAULT_ACCOUNT_ADDR), true);
-    user_map.insert(TOKEN_OWNER_ADDRESS_1_OLD, true);
 
     let sec_key_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         cep18_contract_hash,
         MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
-        runtime_args! {EVENTS => true, REVERT => true, USER_KEY_MAP => &user_map},
+        runtime_args! {REVERT => true, USER_KEY_MAP => &user_map},
     )
     .build();
 
@@ -197,12 +196,14 @@ fn should_migrate_1_5_6_to_2_0_0_rc3() {
         U256::from(TOKEN_OWNER_AMOUNT_1),
     );
 
+    user_map.insert(TOKEN_OWNER_ADDRESS_1_OLD, true);
+
     // migrate the balances from the old owner keys to the new ones in cep-18
     let balance_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         cep18_contract_hash,
         MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME,
-        runtime_args! {EVENTS => true, REVERT => true, USER_KEY_MAP => user_map},
+        runtime_args! {REVERT => true, USER_KEY_MAP => user_map},
     )
     .build();
 
@@ -253,13 +254,12 @@ fn should_have_native_events() {
 
     let mut user_map: BTreeMap<Key, bool> = BTreeMap::new();
     user_map.insert(Key::Account(*DEFAULT_ACCOUNT_ADDR), true);
-    user_map.insert(TOKEN_OWNER_ADDRESS_1_OLD, true);
 
     let sec_key_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
         cep18_token,
         MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
-        runtime_args! {EVENTS => true, REVERT => true, USER_KEY_MAP => &user_map},
+        runtime_args! {REVERT => true, USER_KEY_MAP => &user_map},
     )
     .build();
 
@@ -282,7 +282,7 @@ fn should_have_native_events() {
 
     assert_eq!(
         message_topic(&builder, &cep18_token, *message_topic_hash).message_count(),
-        3
+        2
     );
 
     message_summary(&builder, &cep18_token, message_topic_hash, 0, None).unwrap();

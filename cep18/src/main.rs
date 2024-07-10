@@ -50,7 +50,7 @@ use constants::{
 };
 pub use error::Cep18Error;
 use events::{
-    init_events, AllowanceMigration, BalanceMigration, Burn, ChangeEventsMode, ChangeSecurity,
+    init_events, Burn, ChangeEventsMode, ChangeSecurity,
     DecreaseAllowance, Event, IncreaseAllowance, Mint, SetAllowance, Transfer, TransferFrom,
 };
 use modalities::EventsMode;
@@ -443,10 +443,7 @@ pub extern "C" fn change_security() {
 /// and Key::AddressableEntity(EntityAddr::SmartContract) respectively.
 #[no_mangle]
 pub fn migrate_user_balance_keys() {
-    let event_on: bool = get_named_arg(EVENTS);
     let revert_on: bool = get_named_arg(REVERT);
-    let mut success_map: Vec<(Key, Key)> = Vec::new();
-    let mut failure_map: BTreeMap<Key, String> = BTreeMap::new();
 
     let keys: BTreeMap<Key, bool> = get_named_arg(USER_KEY_MAP);
     let balances_uref = get_balances_uref();
@@ -454,9 +451,7 @@ pub fn migrate_user_balance_keys() {
         let migrated_key = match old_key {
             Key::Account(account_hash) => {
                 if !is_account_flag {
-                    if event_on {
-                        failure_map.insert(old_key, String::from("FlagMismatch"));
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
                     continue;
@@ -465,9 +460,7 @@ pub fn migrate_user_balance_keys() {
             }
             Key::Hash(contract_package) => {
                 if is_account_flag {
-                    if event_on {
-                        failure_map.insert(old_key, String::from("FlagMismatch"));
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
                     continue;
@@ -475,9 +468,7 @@ pub fn migrate_user_balance_keys() {
                 Key::Package(contract_package)
             }
             _ => {
-                if event_on {
-                    failure_map.insert(old_key, String::from("WrongKeyType"));
-                } else if revert_on {
+                if revert_on {
                     revert(Cep18Error::InvalidKeyType)
                 }
                 continue;
@@ -492,19 +483,9 @@ pub fn migrate_user_balance_keys() {
                 migrated_key,
                 new_key_existing_balance + old_balance,
             )
-        } else if event_on {
-            failure_map.insert(old_key, String::from("NoOldKeyBal"));
         } else if revert_on {
             revert(Cep18Error::InsufficientBalance)
         }
-        success_map.push((old_key, migrated_key));
-    }
-
-    if event_on {
-        events::record_event_dictionary(Event::BalanceMigration(BalanceMigration {
-            success_map,
-            failure_map,
-        }));
     }
 }
 
@@ -516,10 +497,7 @@ pub fn migrate_user_balance_keys() {
 /// and Key::AddressableEntity(EntityAddr::SmartContract) respectively.
 #[no_mangle]
 pub fn migrate_user_allowance_keys() {
-    let event_on: bool = get_named_arg(EVENTS);
     let revert_on: bool = get_named_arg(REVERT);
-    let mut success_map: Vec<((Key, Key), (Key, Key))> = Vec::new();
-    let mut failure_map: BTreeMap<(Key, Option<Key>), String> = BTreeMap::new();
 
     let keys: BTreeMap<(Key, bool), Vec<(Key, bool)>> = get_named_arg(USER_KEY_MAP);
     let allowances_uref = get_allowances_uref();
@@ -527,32 +505,24 @@ pub fn migrate_user_allowance_keys() {
         let migrated_spender_key = match spender_key {
             Key::Account(account_hash) => {
                 if !spender_is_account_flag {
-                    if event_on {
-                        failure_map
-                            .insert((spender_key, None), String::from("SpenderFlagMismatch"));
-                        continue;
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
+                    continue;
                 }
                 Key::AddressableEntity(EntityAddr::Account(account_hash.value()))
             }
             Key::Hash(contract_package) => {
                 if spender_is_account_flag {
-                    if event_on {
-                        failure_map
-                            .insert((spender_key, None), String::from("SpenderFlagMismatch"));
-                        continue;
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
+                    continue;
                 }
                 Key::Package(contract_package)
             }
             _ => {
-                if event_on {
-                    failure_map.insert((spender_key, None), String::from("SpenderWrongKeyType"));
-                } else if revert_on {
+                if revert_on {
                     revert(Cep18Error::InvalidKeyType)
                 }
                 continue;
@@ -562,12 +532,7 @@ pub fn migrate_user_allowance_keys() {
             let migrated_owner_key = match owner_key {
                 Key::Account(account_hash) => {
                     if !owner_is_account_flag {
-                        if event_on {
-                            failure_map.insert(
-                                (spender_key, Some(owner_key)),
-                                String::from("OwnerFlagMismatch"),
-                            );
-                        } else if revert_on {
+                        if revert_on {
                             revert(Cep18Error::KeyTypeMigrationMismatch)
                         }
                         continue;
@@ -576,25 +541,15 @@ pub fn migrate_user_allowance_keys() {
                 }
                 Key::Hash(contract_package) => {
                     if owner_is_account_flag {
-                        if event_on {
-                            failure_map.insert(
-                                (spender_key, Some(owner_key)),
-                                String::from("OwnerFlagMismatch"),
-                            );
-                            continue;
-                        } else if revert_on {
+                        if revert_on {
                             revert(Cep18Error::KeyTypeMigrationMismatch)
                         }
+                        continue;
                     }
                     Key::Package(contract_package)
                 }
                 _ => {
-                    if event_on {
-                        failure_map.insert(
-                            (spender_key, Some(owner_key)),
-                            String::from("OwnerWrongKeyType"),
-                        );
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::InvalidKeyType)
                     }
                     continue;
@@ -617,43 +572,23 @@ pub fn migrate_user_allowance_keys() {
                     migrated_spender_key,
                     new_key_existing_allowance + old_allowance,
                 )
-            } else if event_on {
-                failure_map.insert(
-                    (spender_key, Some(owner_key)),
-                    String::from("NoOldKeyAllowance"),
-                );
             } else if revert_on {
                 revert(Cep18Error::InsufficientAllowance)
             }
-            success_map.push((
-                (spender_key, migrated_spender_key),
-                (owner_key, migrated_owner_key),
-            ));
         }
-    }
-    if event_on {
-        events::record_event_dictionary(Event::AllowanceMigration(AllowanceMigration {
-            success_map,
-            failure_map,
-        }));
     }
 }
 
 #[no_mangle]
 pub fn migrate_sec_keys() {
-    let event_on: bool = get_named_arg(EVENTS);
     let revert_on: bool = get_named_arg(REVERT);
-    let mut success_map: Vec<(Key, Key)> = Vec::new();
-    let mut failure_map: BTreeMap<Key, String> = BTreeMap::new();
 
     let keys: BTreeMap<Key, bool> = get_named_arg(USER_KEY_MAP);
     for (old_key, is_account_flag) in keys {
         let migrated_key = match old_key {
             Key::Account(account_hash) => {
                 if !is_account_flag {
-                    if event_on {
-                        failure_map.insert(old_key, String::from("FlagMismatch"));
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
                     continue;
@@ -662,9 +597,7 @@ pub fn migrate_sec_keys() {
             }
             Key::Hash(contract_package) => {
                 if is_account_flag {
-                    if event_on {
-                        failure_map.insert(old_key, String::from("FlagMismatch"));
-                    } else if revert_on {
+                    if revert_on {
                         revert(Cep18Error::KeyTypeMigrationMismatch)
                     }
                     continue;
@@ -672,9 +605,7 @@ pub fn migrate_sec_keys() {
                 Key::Package(contract_package)
             }
             _ => {
-                if event_on {
-                    failure_map.insert(old_key, String::from("WrongKeyType"));
-                } else if revert_on {
+                if revert_on {
                     revert(Cep18Error::InvalidKeyType)
                 }
                 continue;
@@ -695,19 +626,9 @@ pub fn migrate_sec_keys() {
             .unwrap_or(SecurityBadge::None);
         if [SecurityBadge::Admin, SecurityBadge::Minter].contains(&sec) {
             named_dictionary_put(SECURITY_BADGES, &migrated_encoded_user_sec_key, sec);
-        } else if event_on {
-            failure_map.insert(old_key, String::from("NoValidBadge"));
         } else if revert_on {
             revert(Cep18Error::InsufficientRights)
         }
-        success_map.push((old_key, migrated_key));
-    }
-
-    if event_on {
-        events::record_event_dictionary(Event::BalanceMigration(BalanceMigration {
-            success_map,
-            failure_map,
-        }));
     }
 }
 
@@ -730,6 +651,13 @@ fn change_events_mode() {
             init_events();
             let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
         }
+        EventsMode::NativeBytes => {
+            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
+        },
+        EventsMode::NativeBytesNCES => {
+            init_events();
+            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
+        },
     };
     events::record_event_dictionary(Event::ChangeEventsMode(ChangeEventsMode {
         events_mode: events_mode_u8,
@@ -846,7 +774,7 @@ pub fn install_contract(name: &str) {
 
     let mut message_topics = BTreeMap::new();
     message_topics.insert(ERRORS.to_string(), MessageTopicOperation::Add);
-    if [EventsMode::Native, EventsMode::NativeNCES]
+    if [EventsMode::Native, EventsMode::NativeNCES, EventsMode::NativeBytesNCES]
         .contains(&events_mode.try_into().unwrap_or_default())
     {
         message_topics.insert(EVENTS.to_string(), MessageTopicOperation::Add);
