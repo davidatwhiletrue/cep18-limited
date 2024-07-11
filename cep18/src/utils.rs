@@ -51,11 +51,38 @@ where
 /// case it will use contract package hash as the address.
 fn call_stack_element_to_address(call_stack_element: Caller) -> Key {
     match call_stack_element {
-        Caller::Initiator { account_hash } => {
-            Key::AddressableEntity(EntityAddr::Account(account_hash.value()))
+        CallStackElement::Session { account_hash } => Key::from(account_hash),
+        CallStackElement::StoredSession { account_hash, .. } => {
+            // Stored session code acts in account's context, so if stored session wants to interact
+            // with an CEP-18 token caller's address will be used.
+            Key::from(account_hash)
         }
-        Caller::Entity { package_hash, .. } => Key::Package(package_hash.value()),
+        CallStackElement::StoredContract {
+            contract_package_hash,
+            ..
+        } => Key::from(contract_package_hash),
     }
+}
+
+/// Returns the call stack.
+pub fn get_call_stack() -> Vec<CallStackElement> {
+    let (call_stack_len, result_size) = {
+        let mut call_stack_len: usize = 0;
+        let mut result_size: usize = 0;
+        let ret = unsafe {
+            ext_ffi::casper_load_call_stack(
+                &mut call_stack_len as *mut usize,
+                &mut result_size as *mut usize,
+            )
+        };
+        api_error::result_from(ret).unwrap_or_revert();
+        (call_stack_len, result_size)
+    };
+    if call_stack_len == 0 {
+        return Vec::new();
+    }
+    let bytes = read_host_buffer(result_size).unwrap_or_revert();
+    bytesrepr::deserialize(bytes).unwrap_or_revert()
 }
 
 /// Gets the immediate session caller of the current execution.
@@ -63,7 +90,7 @@ fn call_stack_element_to_address(call_stack_element: Caller) -> Key {
 /// This function ensures that Contracts can participate and no middleman (contract) acts for
 /// users.
 pub(crate) fn get_immediate_caller_address() -> Result<Key, Cep18Error> {
-    let call_stack = runtime::get_call_stack();
+    let call_stack = get_call_stack();
     call_stack
         .into_iter()
         .rev()
