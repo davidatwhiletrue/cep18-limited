@@ -219,6 +219,14 @@ fn main() {
             ),
             U256::from(TOKEN_TOTAL_SUPPLY),
         );
+        let mint_request_3 = ExecuteRequestBuilder::contract_call_by_hash(
+            *DEFAULT_ACCOUNT_ADDR,
+            cep18_token,
+            METHOD_MINT,
+            runtime_args! {OWNER => Key::Account(*ACCOUNT_2_ADDR), AMOUNT => U256::from(TOKEN_OWNER_AMOUNT_1)},
+        )
+        .build();
+        builder.exec(mint_request_3).expect_success().commit();
         assert_eq!(
             cep18_check_balance_of(builder, &cep18_token, TOKEN_OWNER_ADDRESS_1),
             U256::from(TOKEN_OWNER_AMOUNT_1)
@@ -227,5 +235,21 @@ fn main() {
             cep18_check_balance_of(builder, &cep18_token, TOKEN_OWNER_ADDRESS_2),
             U256::from(TOKEN_OWNER_AMOUNT_2)
         );
+        assert_eq!(
+            cep18_check_balance_of(builder, &cep18_token, Key::Account(*ACCOUNT_2_ADDR)),
+            U256::from(TOKEN_OWNER_AMOUNT_1)
+        );
+
+        let allowance_amount_1 = U256::from(ALLOWANCE_AMOUNT_1);
+        let approve_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
+            *ACCOUNT_2_ADDR,
+            cep18_token,
+            METHOD_APPROVE,
+            runtime_args! {
+                ARG_SPENDER => Key::Account(*ACCOUNT_1_ADDR),
+                ARG_AMOUNT => allowance_amount_1,
+            },
+        ).build();
+        builder.exec(approve_request_1).expect_success().commit();
     }).unwrap();
 }
