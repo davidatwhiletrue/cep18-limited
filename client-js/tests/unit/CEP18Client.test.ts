@@ -67,7 +67,7 @@ describe('CEP18Client', () => {
     );
     const { deploy: JsonDeploy } = DeployUtil.deployToJson(deploy);
     cep18.setContractHash(
-      'hash-6797fc45c106bd1f4c9f00cb416d63fd71fecfb90ba8f9c24e597b678569d095'
+      'entity-contract-6797fc45c106bd1f4c9f00cb416d63fd71fecfb90ba8f9c24e597b678569d095'
     );
 
     const mockedFns = {

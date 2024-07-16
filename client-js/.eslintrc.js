@@ -52,6 +52,7 @@ module.exports = {
         '@typescript-eslint/prefer-nullish-coalescing': 'off',
         '@typescript-eslint/strict-boolean-expressions': 'off',
         '@typescript-eslint/no-base-to-string': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
         'no-return-await': 'off',
         '@typescript-eslint/return-await': 'warn',
         'no-console': ['error', { allow: ['warn'] }],

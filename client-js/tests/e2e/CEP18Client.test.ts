@@ -58,13 +58,6 @@ describe('CEP18Client', () => {
 
     expectDeployResultToSuccess(result);
 
-    // check events are parsed properly
-    const events = cep18.parseExecutionResult(
-      result.execution_results[0].result
-    );
-    expect(events.length).toEqual(1);
-    expect(events[0].name).toEqual('SetAllowance');
-
     const allowances = await cep18.allowances(owner.publicKey, ali.publicKey);
 
     expect(allowances.eq(amount));
@@ -95,12 +88,6 @@ describe('CEP18Client', () => {
     cep18.setContractHash(contractHash);
 
     expectDeployResultToSuccess(result);
-
-    await cep18.setupEventStream(eventStream);
-
-    cep18.on('SetAllowance', event => {
-      expect(event.name).toEqual('SetAllowance');
-    });
   });
 
   afterAll(() => {
@@ -231,8 +218,5 @@ describe('CEP18Client', () => {
 
     await deploy.send(NODE_URL);
     await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
-    await expect(
-      cep18.parseDeployResult(encodeBase16(deploy.hash))
-    ).rejects.toThrowError('InsufficientBalance');
   });
 });

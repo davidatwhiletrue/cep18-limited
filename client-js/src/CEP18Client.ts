@@ -1,21 +1,18 @@
 import { BigNumber, type BigNumberish } from '@ethersproject/bignumber';
 import { blake2b } from '@noble/hashes/blake2b';
 import {
-  CasperServiceByJsonRPC,
-  type CLKeyParameters,
-  type CLPublicKey,
+  CLKeyVariant,
+  CLPublicKey,
   type CLU256,
   CLValueBuilder,
   CLValueParsers,
   DeployUtil,
   encodeBase16,
   encodeBase64,
-  GetDeployResult,
   type Keys,
   RuntimeArgs
 } from 'casper-js-sdk';
 
-import { ContractError } from './error';
 import TypedContract from './TypedContract';
 import {
   ApproveArgs,
@@ -29,13 +26,16 @@ import {
 } from './types';
 
 export default class CEP18Client extends TypedContract {
-  constructor(public nodeAddress: string, public networkName: string) {
+  constructor(
+    public nodeAddress: string,
+    public networkName: string
+  ) {
     super(nodeAddress, networkName);
   }
 
   public setContractHash(
-    contractHash: `hash-${string}`,
-    contractPackageHash?: `hash-${string}`
+    contractHash: `entity-contract-${string}`,
+    contractPackageHash?: `package-${string}`
   ) {
     this.contractClient.setContractHash(contractHash, contractPackageHash);
   }
@@ -390,7 +390,7 @@ export default class CEP18Client extends TypedContract {
    * @param account account info to get balance
    * @returns account's balance
    */
-  public async balanceOf(account: CLKeyParameters): Promise<BigNumber> {
+  public async balanceOf(account: CLKeyVariant): Promise<BigNumber> {
     const keyBytes = CLValueParsers.toBytes(
       CLValueBuilder.key(account)
     ).unwrap();
@@ -421,8 +421,8 @@ export default class CEP18Client extends TypedContract {
    * @returns approved amount
    */
   public async allowances(
-    owner: CLKeyParameters,
-    spender: CLKeyParameters
+    owner: CLKeyVariant,
+    spender: CLKeyVariant
   ): Promise<BigNumber> {
     const keyOwner = CLValueParsers.toBytes(CLValueBuilder.key(owner)).unwrap();
     const keySpender = CLValueParsers.toBytes(
@@ -510,36 +510,5 @@ export default class CEP18Client extends TypedContract {
     ])) as BigNumber;
     const u8res = internalValue.toNumber();
     return u8res !== 0;
-  }
-
-  /**
-   * Parse deploy result by given hash.
-   * It the deploy wasn't successful, throws `ContractError` if there was operational error, otherwise `Error` with original error message.
-   * @param deployHash deploy hash
-   * @returns `GetDeployResult`
-   */
-  public async parseDeployResult(deployHash: string): Promise<GetDeployResult> {
-    const casperClient = new CasperServiceByJsonRPC(this.nodeAddress);
-
-    const result = await casperClient.getDeployInfo(deployHash);
-    if (
-      result.execution_results.length > 0 &&
-      result.execution_results[0].result.Failure
-    ) {
-      // Parse execution result
-      const { error_message } = result.execution_results[0].result.Failure;
-      const contractErrorMessagePrefix = 'User error: ';
-      if (error_message.startsWith(contractErrorMessagePrefix)) {
-        const errorCode = parseInt(
-          error_message.substring(
-            contractErrorMessagePrefix.length,
-            error_message.length
-          ),
-          10
-        );
-        throw new ContractError(errorCode);
-      } else throw new Error(error_message);
-    }
-    return result;
   }
 }
