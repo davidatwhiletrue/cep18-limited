@@ -60,7 +60,7 @@ pub const TOKEN_OWNER_AMOUNT_1: u64 = 1_000_000;
 pub const TOKEN_OWNER_ADDRESS_2: Key = Key::AddressableEntity(EntityAddr::SmartContract([42; 32]));
 pub const TOKEN_OWNER_AMOUNT_2: u64 = 2_000_000;
 pub const TOKEN_OWNER_ADDRESS_1_OLD: Key = Key::Account(AccountHash::new([42; 32]));
-pub const _TOKEN_OWNER_ADDRESS_2_OLD: Key = Key::Hash([42; 32]);
+pub const TOKEN_OWNER_ADDRESS_2_OLD: Key = Key::Hash([42; 32]);
 
 pub const METHOD_MINT: &str = "mint";
 pub const METHOD_BURN: &str = "burn";
@@ -74,8 +74,8 @@ pub const CHANGE_SECURITY: &str = "change_security";
 
 pub const USER_KEY_MAP: &str = "user_key_map";
 pub const EVENTS: &str = "events";
-pub const REVERT: &str = "revert";
 pub const EVENTS_MODE: &str = "events_mode";
 pub const MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_balance_keys";
 pub const _MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_allowance_keys";
 pub const MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME: &str = "migrate_sec_keys";
+pub const LEGACY_KEY_COMPAT: &str = "legacy_key_compat";

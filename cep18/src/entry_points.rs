@@ -10,10 +10,10 @@ use crate::constants::{
     ADDRESS, ALLOWANCE_ENTRY_POINT_NAME, AMOUNT, APPROVE_ENTRY_POINT_NAME,
     BALANCE_OF_ENTRY_POINT_NAME, BURN_ENTRY_POINT_NAME, CHANGE_EVENTS_MODE_ENTRY_POINT_NAME,
     CHANGE_SECURITY_ENTRY_POINT_NAME, CONDOR, DECIMALS_ENTRY_POINT_NAME,
-    DECREASE_ALLOWANCE_ENTRY_POINT_NAME, EVENTS, EVENTS_MODE, INCREASE_ALLOWANCE_ENTRY_POINT_NAME,
+    DECREASE_ALLOWANCE_ENTRY_POINT_NAME, EVENTS_MODE, INCREASE_ALLOWANCE_ENTRY_POINT_NAME,
     INIT_ENTRY_POINT_NAME, MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME,
     MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME, MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
-    MINT_ENTRY_POINT_NAME, NAME_ENTRY_POINT_NAME, OWNER, RECIPIENT, REVERT, SPENDER,
+    MINT_ENTRY_POINT_NAME, NAME_ENTRY_POINT_NAME, OWNER, RECIPIENT, SPENDER,
     SYMBOL_ENTRY_POINT_NAME, TOTAL_SUPPLY_ENTRY_POINT_NAME, TRANSFER_ENTRY_POINT_NAME,
     TRANSFER_FROM_ENTRY_POINT_NAME,
 };
@@ -216,8 +216,6 @@ pub fn migrate_user_allowance_keys() -> EntryPoint {
     EntryPoint::new(
         String::from(MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME),
         vec![
-            Parameter::new(EVENTS, bool::cl_type()),
-            Parameter::new(REVERT, bool::cl_type()),
             // Parameter::new(USER_KEY_MAP, BTreeMap::<Key, bool>::cl_type()),
         ],
         CLType::Unit,
@@ -232,8 +230,6 @@ pub fn migrate_user_balance_keys() -> EntryPoint {
     EntryPoint::new(
         String::from(MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME),
         vec![
-            Parameter::new(EVENTS, bool::cl_type()),
-            Parameter::new(REVERT, bool::cl_type()),
             // Parameter::new(USER_KEY_MAP, BTreeMap::<Key, bool>::cl_type()),
         ],
         CLType::Unit,
@@ -248,8 +244,6 @@ pub fn migrate_user_sec_keys() -> EntryPoint {
     EntryPoint::new(
         String::from(MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME),
         vec![
-            Parameter::new(EVENTS, bool::cl_type()),
-            Parameter::new(REVERT, bool::cl_type()),
             // Parameter::new(USER_KEY_MAP, BTreeMap::<Key, bool>::cl_type()),
         ],
         CLType::Unit,

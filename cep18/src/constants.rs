@@ -13,7 +13,6 @@ pub const ALLOWANCES: &str = "allowances";
 /// Name of named-key for `total_supply`
 pub const TOTAL_SUPPLY: &str = "total_supply";
 pub const EVENTS: &str = "events";
-pub const REVERT: &str = "revert";
 pub const ERRORS: &str = "errors";
 pub const CONDOR: &str = "condor";
 
@@ -75,3 +74,4 @@ pub const MINTER_LIST: &str = "minter_list";
 pub const NONE_LIST: &str = "none_list";
 pub const ENABLE_MINT_BURN: &str = "enable_mint_burn";
 pub const USER_KEY_MAP: &str = "user_key_map";
+pub const LEGACY_KEY_COMPAT: &str = "legacy_key_compat";

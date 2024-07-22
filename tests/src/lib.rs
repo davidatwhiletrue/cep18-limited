@@ -13,4 +13,6 @@ mod transfer;
 #[cfg(test)]
 mod upgrade;
 #[cfg(test)]
+mod legacy_compat;
+#[cfg(test)]
 mod utility;

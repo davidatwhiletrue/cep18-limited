@@ -6,9 +6,7 @@ use casper_types::{
 
 use crate::utility::{
     constants::{
-        AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CEP18_TOKEN_CONTRACT_KEY,
-        ENABLE_MINT_BURN, EVENTS, EVENTS_MODE, METHOD_MINT, OWNER, TOKEN_DECIMALS, TOKEN_NAME,
-        TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY,
+        AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CEP18_TOKEN_CONTRACT_KEY, ENABLE_MINT_BURN, EVENTS, EVENTS_MODE, LEGACY_KEY_COMPAT, METHOD_MINT, OWNER, TOKEN_DECIMALS, TOKEN_NAME, TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY
     },
     installer_request_builders::{setup_with_args, TestContext},
     message_handlers::{entity, message_topic},
@@ -30,6 +28,7 @@ fn should_have_have_no_events() {
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
         EVENTS_MODE => 0_u8,
         ENABLE_MINT_BURN => true,
+        LEGACY_KEY_COMPAT => 1_u8
     });
 
     let addressable_cep18_token = AddressableEntityHash::new(cep18_contract_hash.value());
@@ -65,6 +64,7 @@ fn should_have_native_events() {
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
         EVENTS_MODE => 2_u8,
         ENABLE_MINT_BURN => true,
+        LEGACY_KEY_COMPAT => 1_u8
     });
 
     let addressable_cep18_token = AddressableEntityHash::new(cep18_contract_hash.value());
@@ -142,6 +142,7 @@ fn should_have_ces_events() {
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
         EVENTS_MODE => 1_u8,
         ENABLE_MINT_BURN => true,
+        LEGACY_KEY_COMPAT => 1_u8
     });
 
     let addressable_cep18_token = AddressableEntityHash::new(cep18_contract_hash.value());
@@ -205,6 +206,7 @@ fn should_have_both_native_and_ces_events() {
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
         EVENTS_MODE => 3_u8,
         ENABLE_MINT_BURN => true,
+        LEGACY_KEY_COMPAT => 1_u8
     });
 
     let addressable_cep18_token = AddressableEntityHash::new(cep18_contract_hash.value());
@@ -297,6 +299,7 @@ fn should_test_error_message_topic_on_mint_overflow() {
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
         EVENTS_MODE => 0_u8,
         ENABLE_MINT_BURN => true,
+        LEGACY_KEY_COMPAT => 1_u8
     });
 
     let addressable_cep18_token = AddressableEntityHash::new(cep18_contract_hash.value());
@@ -310,5 +313,6 @@ fn should_test_error_message_topic_on_mint_overflow() {
     .build();
 
     builder.exec(mint_request).expect_failure().commit();
+
     let _ = builder.get_exec_result_owned(2).unwrap();
 }

@@ -46,3 +46,23 @@ impl TryFrom<u8> for MintBurn {
         }
     }
 }
+
+#[repr(u8)]
+#[derive(PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum LegacyKeyCompat {
+    Condor = 0,
+    Legacy = 1,
+}
+
+impl TryFrom<u8> for LegacyKeyCompat {
+    type Error = Cep18Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(LegacyKeyCompat::Condor),
+            1 => Ok(LegacyKeyCompat::Legacy),
+            _ => Err(Cep18Error::InvalidEnableMBFlag),
+        }
+    }
+}

@@ -11,10 +11,10 @@ use crate::utility::{
     constants::{
         AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CEP18_CONTRACT_WASM,
         CEP18_TEST_CONTRACT_WASM, CEP18_TOKEN_CONTRACT_KEY, CEP18_TOKEN_CONTRACT_VERSION_KEY,
-        EVENTS, EVENTS_MODE, METHOD_MINT, MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME,
-        MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME, OWNER, TOKEN_DECIMALS, TOKEN_NAME,
-        TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_ADDRESS_1_OLD, TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL,
-        TOKEN_TOTAL_SUPPLY, USER_KEY_MAP,
+        EVENTS, EVENTS_MODE, LEGACY_KEY_COMPAT, METHOD_MINT,
+        MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME, MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME, OWNER,
+        TOKEN_DECIMALS, TOKEN_NAME, TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_ADDRESS_1_OLD,
+        TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, USER_KEY_MAP,
     },
     installer_request_builders::cep18_check_balance_of,
     message_handlers::{entity, message_summary, message_topic},
@@ -138,7 +138,8 @@ fn should_migrate_1_5_6_to_2_0_0_rc3() {
             ARG_SYMBOL => TOKEN_SYMBOL,
             ARG_DECIMALS => TOKEN_DECIMALS,
             ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
-            EVENTS_MODE => 3_u8
+            EVENTS_MODE => 3_u8,
+            LEGACY_KEY_COMPAT => 1_u8
         },
     )
     .build();
@@ -231,7 +232,8 @@ fn should_have_native_events() {
             ARG_SYMBOL => TOKEN_SYMBOL,
             ARG_DECIMALS => TOKEN_DECIMALS,
             ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
-            EVENTS_MODE => 3_u8
+            EVENTS_MODE => 3_u8,
+            LEGACY_KEY_COMPAT => 1_u8
         },
     )
     .build();
