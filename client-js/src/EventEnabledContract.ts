@@ -2,7 +2,6 @@
 /* eslint-disable eslint-comments/disable-enable-pair */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Parser } from '@make-software/ces-js-parser';
 import {
   CasperClient,
   Contracts,
@@ -23,14 +22,15 @@ export default class EventEnabledContract {
 
   eventStream?: EventStream;
 
-  parser?: Parser;
-
   private readonly events: Record<
     string,
     ((event: WithDeployInfo<CEP18Event>) => void)[]
   > = {};
 
-  constructor(public nodeAddress: string, public networkName: string) {
+  constructor(
+    public nodeAddress: string,
+    public networkName: string
+  ) {
     this.casperClient = new CasperClient(nodeAddress);
     this.contractClient = new Contract(this.casperClient);
   }
@@ -38,20 +38,17 @@ export default class EventEnabledContract {
   async setupEventStream(eventStream: EventStream) {
     this.eventStream = eventStream;
 
-    if (!this.parser) {
-      this.parser = await Parser.create(this.casperClient.nodeClient, [
-        this.contractClient.contractHash.slice(5)
-      ]);
-    }
-
     await this.eventStream.start();
 
-    this.eventStream.subscribe(EventName.DeployProcessed, deployProcessed => {
-      const {
+    this.eventStream.subscribe(
+      EventName.TransactionProcessed,
+      transactionProcessed => {
+        //#TODO handle this
+        /*const {
         execution_result,
         timestamp,
         deploy_hash: deployHash
-      } = deployProcessed.body.DeployProcessed;
+      } = transactionProcessed.body.DeployProcessed;
 
       if (!execution_result.Success || !this.parser) {
         return;
@@ -69,8 +66,9 @@ export default class EventEnabledContract {
               deployInfo: { deployHash, timestamp }
             } as CEP18EventWithDeployInfo)
         )
-        .forEach(event => this.emit(event));
-    });
+        .forEach(event => this.emit(event));*/
+      }
+    );
   }
 
   on(name: string, listener: (event: CEP18EventWithDeployInfo) => void) {

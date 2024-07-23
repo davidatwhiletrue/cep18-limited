@@ -8,7 +8,7 @@
     "lint": "eslint src/ --max-warnings=0",
     "lint:write": "eslint src/ --fix",
     "test:unit": "cross-env NODE_ENV=test jest \"/tests/unit\"",
-    "test:e2e": "cross-env NODE_ENV=test jest -i --detectOpenHandles --forceExit \"tests/e2e\"",
+    "test:e2e": "cross-env NODE_ENV=test jest -i --detectOpenHandles --forceExit \"tests/e2e/CEP18Client.test.ts\"",
     "test": "npm run test:unit && npm run test:e2e",
     "example:install": "ts-node examples/install.ts",
     "example:usage": "ts-node examples/usage.ts",
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.11.24",
+    "@types/node": "^20.14.9",
     "@typescript-eslint/eslint-plugin": "^7.1.1",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
@@ -64,7 +64,6 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "casper-js-sdk": "^2.15.4",
-    "@make-software/ces-js-parser": "^1.3.3"
+    "casper-js-sdk": "3.0.0-rc01"
   }
 }

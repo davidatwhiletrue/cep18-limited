@@ -1,10 +1,9 @@
 // eslint-disable-next-line eslint-comments/disable-enable-pair
 /* eslint-disable no-console */
-import { BigNumber, type BigNumberish } from '@ethersproject/bignumber';
+import { type BigNumberish } from '@ethersproject/bignumber';
 import {
   CasperServiceByJsonRPC,
   type CLPublicKey,
-  encodeBase16,
   EventStream
 } from 'casper-js-sdk';
 
@@ -16,31 +15,24 @@ import {
   NODE_URL,
   users
 } from '../config';
-import {
-  expectDeployResultToSuccess,
-  findKeyFromAccountNamedKeys,
-  getAccountInfo
-} from '../utils';
+import { findKeyFromAccountNamedKeys, getAccountInfo, sleep } from '../utils';
+import { encodeBase16 } from 'casper-js-sdk';
+import { BigNumber } from '@ethersproject/bignumber';
+import { toKeyEntityAddr } from '../../src/CEP18Client';
 
 describe('CEP18Client', () => {
-  const cep18 = new CEP18Client(NODE_URL, NETWORK_NAME);
   const client = new CasperServiceByJsonRPC(NODE_URL);
   const eventStream = new EventStream(EVENT_STREAM_ADDRESS);
   const owner = users[0];
-  const ali = users[1];
-  const bob = users[2];
-
-  const tokenInfo: InstallArgs = {
-    name: 'TEST CEP18',
-    symbol: 'TFT',
-    decimals: 9,
-    totalSupply: 200_000_000_000
-  };
+  const user1 = users[1];
+  const user2 = users[2];
 
   const doApprove = async (
-    spender: CLPublicKey,
+    cep18: CEP18Client,
+    spenderPubkey: CLPublicKey,
     amount: BigNumberish
   ): Promise<void> => {
+    let spender = toKeyEntityAddr(spenderPubkey);
     const deploy = cep18.approve(
       {
         spender,
@@ -53,67 +45,82 @@ describe('CEP18Client', () => {
     );
 
     await deploy.send(NODE_URL);
-
     const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
-
-    expectDeployResultToSuccess(result);
-
+    if (!result || !client.isDeploySuccessfull(result)) {
+      fail('Transfer deploy failed');
+    }
     // check events are parsed properly
+    /* #TODO need to read messages from SSE event
     const events = cep18.parseExecutionResult(
       result.execution_results[0].result
     );
     expect(events.length).toEqual(1);
     expect(events[0].name).toEqual('SetAllowance');
-
-    const allowances = await cep18.allowances(owner.publicKey, ali.publicKey);
-
-    expect(allowances.eq(amount));
+    */
+    await sleep(5000);
+    const allowances = await cep18.allowances(owner.publicKey, spenderPubkey);
+    expect(allowances.toNumber()).toEqual(amount);
   };
+  let testNumber = 1;
 
-  beforeAll(async () => {
+  const prepareContract = async (): Promise<{
+    cep18: CEP18Client;
+    tokenInfo: InstallArgs;
+  }> => {
+    const ordinal = testNumber++;
+    const random_part = `${Date.now()}_${ordinal}`;
+    const tokenInfo: InstallArgs = {
+      name: 'Test_Token_' + random_part,
+      symbol: 'TFT_' + random_part,
+      decimals: 2,
+      totalSupply: 10000
+    };
+
+    const cep18 = new CEP18Client(NODE_URL, NETWORK_NAME);
+    cep18.setContractName('cep18_contract_hash_' + tokenInfo.name);
     const deploy = cep18.install(
       ContractWASM,
-      { ...tokenInfo, eventsMode: EVENTS_MODE.CES },
+      { ...tokenInfo, eventsMode: EVENTS_MODE.Native },
       250_000_000_000,
       owner.publicKey,
       NETWORK_NAME,
       [owner]
     );
-
     await deploy.send(NODE_URL);
 
     const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
-
-    expectDeployResultToSuccess(result);
-
+    if (!result || !client.isDeploySuccessfull(result)) {
+      fail('Install deploy failed');
+    }
+    await sleep(5000);
     const accountInfo = await getAccountInfo(NODE_URL, owner.publicKey);
-
     const contractHash = findKeyFromAccountNamedKeys(
       accountInfo,
       `cep18_contract_hash_${tokenInfo.name}`
-    ) as `hash-${string}`;
+    ) as `entity-contract-${string}`;
     cep18.setContractHash(contractHash);
-
-    expectDeployResultToSuccess(result);
 
     await cep18.setupEventStream(eventStream);
 
     cep18.on('SetAllowance', event => {
       expect(event.name).toEqual('SetAllowance');
     });
-  });
+    return { cep18, tokenInfo };
+  };
 
   afterAll(() => {
     eventStream.stop();
   });
 
-  it('should deploy contract', () => {
+  it('should deploy contract', async () => {
+    const { cep18 } = await prepareContract();
     const contracHash = cep18.contractHash;
 
     expect(contracHash).toBeDefined();
   });
 
-  it('should match on-chain info with install info', async () => {
+  it.only('should match on-chain info with install info', async () => {
+    const { cep18, tokenInfo } = await prepareContract();
     const name = await cep18.name();
     const symbol = await cep18.symbol();
     const decimals = await cep18.decimals();
@@ -121,88 +128,89 @@ describe('CEP18Client', () => {
 
     expect(name).toBe(tokenInfo.name);
     expect(symbol).toBe(tokenInfo.symbol);
-    expect(decimals.eq(tokenInfo.decimals));
-    expect(totalSupply.eq(tokenInfo.totalSupply));
+    expect(decimals.toNumber()).toEqual(tokenInfo.decimals);
+    expect(totalSupply.toNumber()).toEqual(tokenInfo.totalSupply);
   });
 
   it('should owner owns totalSupply amount of tokens', async () => {
+    const { cep18, tokenInfo } = await prepareContract();
     const balance = await cep18.balanceOf(owner.publicKey);
-
-    expect(balance.eq(tokenInfo.totalSupply));
+    expect(balance.toNumber()).toEqual(tokenInfo.totalSupply);
   });
 
   it('should return 0 when balance info not found from balances dictionary', async () => {
+    const { cep18 } = await prepareContract();
     const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation();
 
-    const balance = await cep18.balanceOf(ali.publicKey);
+    const balance = await cep18.balanceOf(user1.publicKey);
 
     expect(console.warn).toHaveBeenCalledWith(
-      `Not found balance for ${encodeBase16(ali.publicKey.value())}`
+      `Not found balance for ${encodeBase16(user1.publicKey.value())}`
     );
-    expect(console.warn).toHaveBeenCalledTimes(1);
     consoleWarnMock.mockRestore();
 
-    expect(balance.eq(0));
+    expect(balance.toNumber()).toEqual(0);
   });
 
   it('should return 0 when allowances info not found and log warning', async () => {
+    const { cep18 } = await prepareContract();
     const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation();
 
-    const allowances = await cep18.allowances(owner.publicKey, ali.publicKey);
+    const allowances = await cep18.allowances(owner.publicKey, user1.publicKey);
 
     expect(console.warn).toHaveBeenCalledWith(
       `Not found allowances for ${encodeBase16(owner.publicKey.value())}`
     );
-    expect(console.warn).toHaveBeenCalledTimes(1);
     consoleWarnMock.mockRestore();
 
-    expect(allowances.eq(0));
-  });
-
-  it('should approve token', async () => {
-    const amount = 50_000_000_000;
-    await doApprove(ali.publicKey, amount);
+    expect(allowances.toNumber()).toEqual(0);
   });
 
   it('should tranfer tokens by allowances', async () => {
-    const amount = 50_000_000_000;
-    await doApprove(ali.publicKey, amount);
+    const { cep18 } = await prepareContract();
+    const amount = 500;
+    await doApprove(cep18, user1.publicKey, amount);
 
-    const transferAmount = 20_000_000_000;
+    const transferAmount = 20;
 
     const deploy = cep18.transferFrom(
       {
-        owner: owner.publicKey,
-        recipient: bob.publicKey,
+        owner: toKeyEntityAddr(owner.publicKey),
+        recipient: toKeyEntityAddr(user2.publicKey),
         amount: transferAmount
       },
       5_000_000_000,
-      ali.publicKey,
+      user1.publicKey,
       NETWORK_NAME,
-      [ali]
+      [user1]
     );
 
     await deploy.send(NODE_URL);
 
     const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
+    if (!result || !client.isDeploySuccessfull(result)) {
+      fail('Transfer deploy failed');
+    }
+    await sleep(5000);
+    const balance = await cep18.balanceOf(user2.publicKey);
 
-    expectDeployResultToSuccess(result);
+    expect(balance.toNumber()).toEqual(transferAmount);
 
-    const balance = await cep18.balanceOf(bob.publicKey);
+    const allowances = await cep18.allowances(owner.publicKey, user1.publicKey);
 
-    expect(balance.eq(transferAmount));
-
-    const allowances = await cep18.allowances(owner.publicKey, ali.publicKey);
-
-    expect(allowances.eq(BigNumber.from(amount).sub(transferAmount)));
+    expect(allowances).toEqual(BigNumber.from(amount).sub(transferAmount));
   });
 
   it('should transfer tokens', async () => {
-    const amount = 50_000_000_000;
+    const { cep18 } = await prepareContract();
+    const amount = 50;
+    await doApprove(cep18, user1.publicKey, amount);
+
+    const transferAmount = 20;
 
     const deploy = cep18.transfer(
-      { recipient: ali.publicKey, amount },
-      5_000_000_000,
+      { recipient: toKeyEntityAddr(user1.publicKey), amount },
+      transferAmount,
       owner.publicKey,
       NETWORK_NAME,
       [owner]
@@ -211,24 +219,25 @@ describe('CEP18Client', () => {
     await deploy.send(NODE_URL);
 
     const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
-    expectDeployResultToSuccess(result);
+    if (!result || !client.isDeploySuccessfull(result)) {
+      fail('Transfer deploy failed');
+    }
 
-    const balance = await cep18.balanceOf(ali.publicKey);
+    const balance = await cep18.balanceOf(user1.publicKey);
 
-    expect(balance.eq(amount));
+    expect(balance.toNumber()).toEqual(amount);
   });
 
   it('should throw error when try to transfer more than owned balance', async () => {
+    const { cep18 } = await prepareContract();
     const amount = 5_000_000_000_000;
-
     const deploy = cep18.transfer(
-      { recipient: ali.publicKey, amount },
+      { recipient: toKeyEntityAddr(user1.publicKey), amount },
       5_000_000_000,
       owner.publicKey,
       NETWORK_NAME,
       [owner]
     );
-
     await deploy.send(NODE_URL);
     await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
     await expect(

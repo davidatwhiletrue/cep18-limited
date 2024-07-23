@@ -2,22 +2,28 @@
   [
     "admin_list",
     {
-      "bytes": "010000000031dfd6356d4be001607bd2d6b163c9b23967873a849a96813781674cf5e4d96b",
-      "cl_type": { "List": "Key" }
+      "bytes": "0100000000aff5c18a954604dd27d139d8e0cfc533ac3d53784d76c7a7ac5ff4039510fdf6",
+      "cl_type": {
+        "List": "Key"
+      }
     }
   ],
   [
     "minter_list",
     {
-      "bytes": "0100000000ed62a15eb2fe49063edcaae1a47fd41f7af51a3eeaf38ee5c88656a44fd62cfc",
-      "cl_type": { "List": "Key" }
+      "bytes": "0100000000868e06026ba9c8695f6f3bb10d44782004dbc144ff65017cf484436f9cf7b0f6",
+      "cl_type": {
+        "List": "Key"
+      }
     }
   ],
   [
     "burner_list",
     {
-      "bytes": "0200000000ed62a15eb2fe49063edcaae1a47fd41f7af51a3eeaf38ee5c88656a44fd62cfc00c7d4ae581e159882f9ec13bed23854a945ca648af9542bde6941123a78f4aca4",
-      "cl_type": { "List": "Key" }
+      "bytes": "0200000000868e06026ba9c8695f6f3bb10d44782004dbc144ff65017cf484436f9cf7b0f600bfe707f56b46172965fd9e557d32582e5daf677b786bc44c5a584a5956962cea",
+      "cl_type": {
+        "List": "Key"
+      }
     }
   ]
 ]

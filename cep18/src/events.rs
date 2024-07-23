@@ -1,6 +1,6 @@
 use core::convert::TryFrom;
 
-use alloc::{collections::BTreeMap, format};
+use alloc::{collections::BTreeMap, format, string::String};
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
 use casper_types::{bytesrepr::FromBytes, contract_messages::MessagePayload, Key, U256};
 
@@ -54,6 +54,7 @@ pub enum Event {
     TransferFrom(TransferFrom),
     ChangeSecurity(ChangeSecurity),
     ChangeEventsMode(ChangeEventsMode),
+    RawMsg(String),
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
@@ -128,6 +129,7 @@ fn ces(event: Event) {
         Event::TransferFrom(ev) => emit(ev),
         Event::ChangeSecurity(ev) => emit(ev),
         Event::ChangeEventsMode(ev) => emit(ev),
+        Event::RawMsg(ev) => emit(ev),
     }
 }
 
