@@ -20,6 +20,8 @@ use casper_types::{
 };
 
 use crate::{
+    allowances::{read_allowance_from, write_allowance_to},
+    balances::{read_balance_from, write_balance_to},
     constants::{LEGACY_KEY_COMPAT, SECURITY_BADGES, TOTAL_SUPPLY},
     error::Cep18Error,
     modalities::LegacyKeyCompat,
@@ -176,9 +178,7 @@ pub fn get_named_arg_size(name: &str) -> Option<usize> {
     match api_error::result_from(ret) {
         Ok(_) => Some(arg_size),
         Err(ApiError::MissingArgument) => None,
-        Err(e) => {
-            runtime::revert(e)
-        }
+        Err(e) => runtime::revert(e),
     }
 }
 
@@ -216,7 +216,7 @@ pub fn get_named_arg_with_user_errors<T: FromBytes>(
         };
         // Assumed to be safe as `get_named_arg_size` checks the argument already
         res.map_err(|_err| Cep18Error::FailedToGetArgBytes)
-        .unwrap_or_revert()
+            .unwrap_or_revert()
     } else {
         // Avoids allocation with 0 bytes and a call to get_named_arg
         Vec::new()
@@ -312,4 +312,78 @@ pub fn change_sec_badge(badge_map: &BTreeMap<Key, SecurityBadge>) {
             badge,
         )
     }
+}
+
+pub fn lazy_migrate_balance(balances_uref: URef, new_user_key: Key) {
+    let legacy_user = match new_user_key {
+        Key::Package(hash) => Key::Hash(hash),
+        Key::AddressableEntity(EntityAddr::Account(account)) => {
+            Key::Account(AccountHash::new(account))
+        }
+        _ => revert(Cep18Error::InvalidKeyType),
+    };
+    let mut new_account_existing_balance = read_balance_from(balances_uref, new_user_key);
+    let legacy_account_balance = read_balance_from(balances_uref, legacy_user);
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(legacy_account_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    write_balance_to(balances_uref, new_user_key, new_account_existing_balance);
+    write_balance_to(balances_uref, legacy_user, U256::zero());
+}
+
+pub fn lazy_migrate_allowance(
+    balances_uref: URef,
+    allowances_uref: URef,
+    new_owner_key: Key,
+    new_spender_key: Key,
+) {
+    let legacy_owner = match new_owner_key {
+        Key::Package(hash) => Key::Hash(hash),
+        Key::AddressableEntity(EntityAddr::Account(account)) => {
+            Key::Account(AccountHash::new(account))
+        }
+        _ => revert(Cep18Error::InvalidKeyType),
+    };
+    let legacy_spender = match new_spender_key {
+        Key::Package(hash) => Key::Hash(hash),
+        Key::AddressableEntity(EntityAddr::Account(account)) => {
+            Key::Account(AccountHash::new(account))
+        }
+        _ => revert(Cep18Error::InvalidKeyType),
+    };
+    let mut new_account_existing_balance =
+        read_allowance_from(allowances_uref, new_owner_key, new_spender_key);
+    let legacy_owner_legacy_spender_balance =
+        read_allowance_from(allowances_uref, legacy_owner, legacy_spender);
+    let legacy_owner_new_spender_balance =
+        read_allowance_from(allowances_uref, legacy_owner, new_spender_key);
+    let new_owner_legacy_spender_balance =
+        read_allowance_from(allowances_uref, new_owner_key, legacy_spender);
+
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(legacy_owner_legacy_spender_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(legacy_owner_new_spender_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    new_account_existing_balance = new_account_existing_balance
+        .checked_add(new_owner_legacy_spender_balance)
+        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
+
+    if new_account_existing_balance > read_balance_from(balances_uref, new_owner_key) {
+        revert(Cep18Error::InsufficientMigratedBalance);
+    }
+
+    write_allowance_to(
+        allowances_uref,
+        new_owner_key,
+        new_spender_key,
+        new_account_existing_balance,
+    );
+    write_allowance_to(allowances_uref, legacy_owner, legacy_spender, U256::zero());
+    write_allowance_to(allowances_uref, legacy_owner, new_spender_key, U256::zero());
+    write_allowance_to(allowances_uref, new_owner_key, legacy_spender, U256::zero());
 }

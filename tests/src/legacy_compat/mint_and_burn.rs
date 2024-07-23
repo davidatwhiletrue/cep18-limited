@@ -3,7 +3,11 @@ use casper_types::{runtime_args, AddressableEntityHash, ApiError, Key, U256};
 
 use crate::utility::{
     constants::{
-        ADMIN_LIST, AMOUNT, ARG_AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_OWNER, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CHANGE_SECURITY, ENABLE_MINT_BURN, ERROR_INSUFFICIENT_BALANCE, ERROR_OVERFLOW, LEGACY_KEY_COMPAT, METHOD_BURN, METHOD_MINT, MINTER_LIST, NONE_LIST, OWNER, TOKEN_DECIMALS, TOKEN_NAME, TOKEN_OWNER_ADDRESS_1_OLD, TOKEN_OWNER_ADDRESS_2_OLD, TOKEN_OWNER_AMOUNT_1, TOKEN_OWNER_AMOUNT_2, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY
+        ADMIN_LIST, AMOUNT, ARG_AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_OWNER, ARG_SYMBOL,
+        ARG_TOTAL_SUPPLY, CHANGE_SECURITY, ENABLE_MINT_BURN, ERROR_INSUFFICIENT_BALANCE,
+        ERROR_OVERFLOW, LEGACY_KEY_COMPAT, METHOD_BURN, METHOD_MINT, MINTER_LIST, NONE_LIST, OWNER,
+        TOKEN_DECIMALS, TOKEN_NAME, TOKEN_OWNER_ADDRESS_1_OLD, TOKEN_OWNER_ADDRESS_2_OLD,
+        TOKEN_OWNER_AMOUNT_1, TOKEN_OWNER_AMOUNT_2, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY,
     },
     installer_request_builders::{
         cep18_check_balance_of, cep18_check_total_supply, get_test_account, setup_with_args,
@@ -57,11 +61,19 @@ fn test_mint_and_burn_tokens() {
         U256::from(TOKEN_TOTAL_SUPPLY),
     );
     assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_1_OLD),
+        cep18_check_balance_of(
+            &mut builder,
+            &cep18_contract_hash,
+            TOKEN_OWNER_ADDRESS_1_OLD
+        ),
         U256::from(TOKEN_OWNER_AMOUNT_1)
     );
     assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_2_OLD),
+        cep18_check_balance_of(
+            &mut builder,
+            &cep18_contract_hash,
+            TOKEN_OWNER_ADDRESS_2_OLD
+        ),
         U256::from(TOKEN_OWNER_AMOUNT_2)
     );
     let total_supply_before_mint = cep18_check_total_supply(&mut builder, &cep18_contract_hash);
@@ -80,11 +92,19 @@ fn test_mint_and_burn_tokens() {
     builder.exec(mint_request).expect_success().commit();
 
     assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_1_OLD),
+        cep18_check_balance_of(
+            &mut builder,
+            &cep18_contract_hash,
+            TOKEN_OWNER_ADDRESS_1_OLD
+        ),
         U256::from(TOKEN_OWNER_AMOUNT_1) + mint_amount,
     );
     assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_2_OLD),
+        cep18_check_balance_of(
+            &mut builder,
+            &cep18_contract_hash,
+            TOKEN_OWNER_ADDRESS_2_OLD
+        ),
         U256::from(TOKEN_OWNER_AMOUNT_2)
     );
 
@@ -117,7 +137,11 @@ fn test_mint_and_burn_tokens() {
         U256::from(999999999),
     );
     assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_2_OLD),
+        cep18_check_balance_of(
+            &mut builder,
+            &cep18_contract_hash,
+            TOKEN_OWNER_ADDRESS_2_OLD
+        ),
         U256::from(TOKEN_OWNER_AMOUNT_2)
     );
     let total_supply_after_burn = cep18_check_total_supply(&mut builder, &cep18_contract_hash);
@@ -166,7 +190,11 @@ fn test_should_not_mint_above_limits() {
     .build();
     builder.exec(mint_request_2).expect_success().commit();
     assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_1_OLD),
+        cep18_check_balance_of(
+            &mut builder,
+            &cep18_contract_hash,
+            TOKEN_OWNER_ADDRESS_1_OLD
+        ),
         U256::from(TOKEN_OWNER_AMOUNT_1)
     );
 

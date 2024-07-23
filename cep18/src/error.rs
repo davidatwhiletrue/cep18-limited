@@ -70,6 +70,10 @@ pub enum Cep18Error {
     FailedToGetOldPackageKey = 60039,
     FailedToGetPackageKey = 60040,
     FailedToGetOldContractHashKey = 60041,
+    UnchangedEventsMode = 60042,
+    InvalidCompatibilityMod = 60043,
+    InvalidMigrationMod = 60044,
+    InsufficientMigratedBalance = 60045,
 }
 
 impl From<Cep18Error> for ApiError {

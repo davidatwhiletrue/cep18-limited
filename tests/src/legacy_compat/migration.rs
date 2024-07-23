@@ -11,13 +11,14 @@ use crate::utility::{
     constants::{
         AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CEP18_CONTRACT_WASM,
         CEP18_TEST_CONTRACT_WASM, CEP18_TOKEN_CONTRACT_KEY, CEP18_TOKEN_CONTRACT_VERSION_KEY,
-        EVENTS, EVENTS_MODE, LEGACY_KEY_COMPAT, METHOD_MINT,
+        CHANGE_MODALITIES, EVENTS, EVENTS_MODE, LAZY_MIGRATE, LEGACY_KEY_COMPAT, METHOD_MINT,
         MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME, MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME, OWNER,
         TOKEN_DECIMALS, TOKEN_NAME, TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_ADDRESS_1_OLD,
         TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY, USER_KEY_MAP,
     },
     installer_request_builders::cep18_check_balance_of,
     message_handlers::{entity, message_summary, message_topic},
+    support::{LazyMigrate, LegacyKeyCompat},
 };
 
 pub fn upgrade_v1_5_6_fixture_to_v2_0_0_ee(
@@ -286,4 +287,68 @@ fn should_have_native_events() {
     );
 
     message_summary(&builder, &cep18_token, message_topic_hash, 0, None).unwrap();
+}
+
+#[test]
+fn should_change_from_legacy_compat_to_condor() {
+    let (mut builder, lmdb_fixture_state, _temp_dir) =
+        casper_fixtures::builder_from_global_state_fixture("cep18-1.5.6-minted");
+
+    upgrade_v1_5_6_fixture_to_v2_0_0_ee(&mut builder, &lmdb_fixture_state);
+
+    let upgrade_request = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        CEP18_CONTRACT_WASM,
+        runtime_args! {
+            ARG_NAME => TOKEN_NAME,
+            ARG_SYMBOL => TOKEN_SYMBOL,
+            ARG_DECIMALS => TOKEN_DECIMALS,
+            ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
+            EVENTS_MODE => 3_u8,
+            LEGACY_KEY_COMPAT => LegacyKeyCompat::Legacy as u8,
+            LAZY_MIGRATE => LazyMigrate::No as u8
+        },
+    )
+    .build();
+
+    builder.exec(upgrade_request).expect_success().commit();
+
+    let cep18_token = get_contract_hash_v2_binary(&builder);
+
+    let mut user_map: Vec<Key> = Vec::new();
+    user_map.push(Key::Account(*DEFAULT_ACCOUNT_ADDR));
+    user_map.push(TOKEN_OWNER_ADDRESS_1_OLD);
+
+    let modality_change = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        cep18_token,
+        CHANGE_MODALITIES,
+        runtime_args! {LEGACY_KEY_COMPAT => LegacyKeyCompat::Condor as u8, LAZY_MIGRATE => LazyMigrate::Migrate as u8},
+    )
+    .build();
+
+    builder.exec(modality_change).expect_success().commit();
+
+    let sec_key_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        cep18_token,
+        MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
+        runtime_args! {USER_KEY_MAP => &user_map},
+    )
+    .build();
+
+    builder
+        .exec(sec_key_migrate_request)
+        .expect_success()
+        .commit();
+
+    let mint_request = ExecuteRequestBuilder::contract_call_by_hash(
+        *DEFAULT_ACCOUNT_ADDR,
+        cep18_token,
+        METHOD_MINT,
+        runtime_args! {OWNER => TOKEN_OWNER_ADDRESS_1, AMOUNT => U256::from(TOKEN_OWNER_AMOUNT_1)},
+    )
+    .build();
+
+    builder.exec(mint_request).expect_success().commit();
 }

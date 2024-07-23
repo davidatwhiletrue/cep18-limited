@@ -2,7 +2,7 @@ use core::convert::TryFrom;
 
 use alloc::{collections::BTreeMap, format};
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
-use casper_types::{Key, U256};
+use casper_types::{bytesrepr::FromBytes, contract_messages::MessagePayload, Key, U256};
 
 use crate::{
     constants::{EVENTS, EVENTS_MODE},
@@ -23,8 +23,21 @@ pub fn record_event_dictionary(event: Event) {
         EventsMode::Native => {
             runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert()
         }
+        EventsMode::NativeBytes => {
+            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes())
+                .unwrap_or_revert()
+                .0;
+            runtime::emit_message(EVENTS, &payload).unwrap_or_revert()
+        }
         EventsMode::NativeNCES => {
             runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert();
+            ces(event);
+        }
+        EventsMode::NativeBytesNCES => {
+            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes())
+                .unwrap_or_revert()
+                .0;
+            runtime::emit_message(EVENTS, &payload).unwrap_or_revert();
             ces(event);
         }
     }

@@ -1,6 +1,9 @@
-use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_KEY};
+use casper_engine_test_support::{
+    ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_KEY,
+};
 use casper_types::{runtime_args, AddressableEntityHash, ApiError, Key, U256};
 
+use super::setup;
 use crate::utility::{
     constants::{
         ALLOWANCE_AMOUNT_1, ALLOWANCE_AMOUNT_2, ARG_AMOUNT, ARG_OWNER, ARG_RECIPIENT, ARG_SPENDER,
@@ -8,12 +11,11 @@ use crate::utility::{
         METHOD_TRANSFER_FROM,
     },
     installer_request_builders::{
-        cep18_check_allowance_of, get_test_account, make_cep18_approve_request,
-        test_approve_for, TestContext,
+        cep18_check_allowance_of, get_test_account, make_cep18_approve_request, test_approve_for,
+        TestContext,
     },
 };
 use casper_execution_engine::{engine_state::Error as CoreError, execution::ExecError};
-use super::setup;
 
 #[test]
 fn should_approve_funds_contract_to_account() {
@@ -69,7 +71,7 @@ fn should_approve_funds_account_to_account() {
 #[test]
 fn should_approve_funds_account_to_contract() {
     let (mut builder, test_context) = setup();
-    
+
     test_approve_for(
         &mut builder,
         &test_context,
@@ -89,8 +91,7 @@ fn should_not_transfer_from_without_enough_allowance() {
         },
     ) = setup();
 
-    let (_, default_account_user_account_hash, _) =
-        get_test_account("ACCOUNT_USER_0");
+    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
     let (_, hash, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());

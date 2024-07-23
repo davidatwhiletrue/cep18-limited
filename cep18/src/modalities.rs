@@ -11,6 +11,8 @@ pub enum EventsMode {
     CES = 1,
     Native = 2,
     NativeNCES = 3,
+    NativeBytes = 4,
+    NativeBytesNCES = 5,
 }
 
 impl TryFrom<u8> for EventsMode {
@@ -22,6 +24,8 @@ impl TryFrom<u8> for EventsMode {
             1 => Ok(EventsMode::CES),
             2 => Ok(EventsMode::Native),
             3 => Ok(EventsMode::NativeNCES),
+            4 => Ok(EventsMode::NativeBytes),
+            5 => Ok(EventsMode::NativeBytesNCES),
             _ => Err(Cep18Error::InvalidEventsMode),
         }
     }
@@ -48,9 +52,10 @@ impl TryFrom<u8> for MintBurn {
 }
 
 #[repr(u8)]
-#[derive(PartialEq, Eq)]
+#[derive(Default, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum LegacyKeyCompat {
+    #[default]
     Condor = 0,
     Legacy = 1,
 }
@@ -62,7 +67,28 @@ impl TryFrom<u8> for LegacyKeyCompat {
         match value {
             0 => Ok(LegacyKeyCompat::Condor),
             1 => Ok(LegacyKeyCompat::Legacy),
-            _ => Err(Cep18Error::InvalidEnableMBFlag),
+            _ => Err(Cep18Error::InvalidCompatibilityMod),
+        }
+    }
+}
+
+#[repr(u8)]
+#[derive(Default, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum LazyMigrate {
+    No = 0,
+    #[default]
+    Migrate = 1,
+}
+
+impl TryFrom<u8> for LazyMigrate {
+    type Error = Cep18Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(LazyMigrate::No),
+            1 => Ok(LazyMigrate::Migrate),
+            _ => Err(Cep18Error::InvalidMigrationMod),
         }
     }
 }

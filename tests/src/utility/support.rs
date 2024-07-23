@@ -44,7 +44,6 @@ pub(crate) fn get_dictionary_value_from_key<T: CLTyped + FromBytes>(
         .unwrap()
 }
 
-/*
 #[repr(u8)]
 #[derive(PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
@@ -52,4 +51,23 @@ pub enum LegacyKeyCompat {
     Condor = 0,
     Legacy = 1,
 }
-*/
+
+impl Default for LegacyKeyCompat {
+    fn default() -> Self {
+        LegacyKeyCompat::Condor
+    }
+}
+
+#[repr(u8)]
+#[derive(PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum LazyMigrate {
+    No = 0,
+    Migrate = 1,
+}
+
+impl Default for LazyMigrate {
+    fn default() -> Self {
+        LazyMigrate::Migrate
+    }
+}

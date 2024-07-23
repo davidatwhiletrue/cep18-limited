@@ -5,6 +5,8 @@ mod events;
 #[cfg(test)]
 mod install;
 #[cfg(test)]
+mod legacy_compat;
+#[cfg(test)]
 mod migration;
 #[cfg(test)]
 mod mint_and_burn;
@@ -12,7 +14,5 @@ mod mint_and_burn;
 mod transfer;
 #[cfg(test)]
 mod upgrade;
-#[cfg(test)]
-mod legacy_compat;
 #[cfg(test)]
 mod utility;

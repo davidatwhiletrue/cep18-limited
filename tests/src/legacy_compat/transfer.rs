@@ -13,8 +13,7 @@ use crate::utility::{
     },
     installer_request_builders::{
         cep18_check_allowance_of, cep18_check_balance_of, get_test_account,
-        make_cep18_approve_request, make_cep18_transfer_request, test_cep18_transfer,
-        TestContext,
+        make_cep18_approve_request, make_cep18_transfer_request, test_cep18_transfer, TestContext,
     },
 };
 
@@ -35,7 +34,7 @@ fn should_transfer_full_owned_amount() {
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
     let (_, account_user_1_hash, _) = get_test_account("ACCOUNT_USER_1");
     let account_user_1_key = Key::Account(account_user_1_hash);
-    
+
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
     let initial_supply = U256::from(TOKEN_TOTAL_SUPPLY);
     let transfer_amount_1 = initial_supply;
@@ -92,8 +91,7 @@ fn should_not_transfer_more_than_owned_balance() {
         },
     ) = setup();
 
-    let (_, default_account_user_account_hash, _) =
-        get_test_account("ACCOUNT_USER_0");
+    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
     let (_, account_user_1_hash, _) = get_test_account("ACCOUNT_USER_1");
     let account_user_1_key = Key::Account(account_user_1_hash);
@@ -162,8 +160,7 @@ fn should_transfer_from_from_account_to_account() {
         },
     ) = setup();
 
-    let (_, default_account_user_account_hash, _) =
-        get_test_account("ACCOUNT_USER_0");
+    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
     let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
     let account_user_1_key = Key::Account(account_user_1_account_hash);
@@ -373,8 +370,7 @@ fn should_not_be_able_to_own_transfer_from() {
         },
     ) = setup();
 
-    let (_, default_account_account_hash, _) =
-        get_test_account("ACCOUNT_USER_0");
+    let (_, default_account_account_hash, _) = get_test_account("ACCOUNT_USER_0");
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
@@ -596,7 +592,6 @@ fn should_transfer_contract_to_account() {
 #[test]
 fn should_transfer_account_to_contract() {
     let (mut builder, test_context) = setup();
-
 
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
     let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
