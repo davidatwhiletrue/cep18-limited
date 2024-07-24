@@ -2,9 +2,15 @@
   [
     "spender",
     {
-      "bytes": "00ed62a15eb2fe49063edcaae1a47fd41f7af51a3eeaf38ee5c88656a44fd62cfc",
+      "bytes": "00868e06026ba9c8695f6f3bb10d44782004dbc144ff65017cf484436f9cf7b0f6",
       "cl_type": "Key"
     }
   ],
-  ["amount", { "bytes": "0500743ba40b", "cl_type": "U256" }]
+  [
+    "amount",
+    {
+      "bytes": "0500743ba40b",
+      "cl_type": "U256"
+    }
+  ]
 ]

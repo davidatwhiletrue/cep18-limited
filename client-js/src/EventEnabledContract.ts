@@ -2,7 +2,6 @@
 /* eslint-disable eslint-comments/disable-enable-pair */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Parser } from '@make-software/ces-js-parser';
 import {
   CasperClient,
   Contracts,
@@ -12,7 +11,15 @@ import {
   ExecutionResult
 } from 'casper-js-sdk';
 
-import { CEP18Event, CEP18EventWithDeployInfo, WithDeployInfo } from './events';
+import {
+  CEP18Event,
+  CEP18EventWithTransactionInfo,
+  WithTransactionInfo
+} from './events';
+import {
+  TransactionProcessed,
+  TransactionProcessedParser
+} from './TransactionProcessedParser';
 
 const { Contract } = Contracts;
 
@@ -23,14 +30,19 @@ export default class EventEnabledContract {
 
   eventStream?: EventStream;
 
-  parser?: Parser;
+  parser: TransactionProcessedParser;
 
   private readonly events: Record<
     string,
-    ((event: WithDeployInfo<CEP18Event>) => void)[]
+    ((event: WithTransactionInfo<CEP18Event>) => void)[]
   > = {};
 
-  constructor(public nodeAddress: string, public networkName: string) {
+  constructor(
+    public nodeAddress: string,
+    public networkName: string,
+    public inputParser: TransactionProcessedParser
+  ) {
+    this.parser = inputParser;
     this.casperClient = new CasperClient(nodeAddress);
     this.contractClient = new Contract(this.casperClient);
   }
@@ -38,61 +50,38 @@ export default class EventEnabledContract {
   async setupEventStream(eventStream: EventStream) {
     this.eventStream = eventStream;
 
-    if (!this.parser) {
-      this.parser = await Parser.create(this.casperClient.nodeClient, [
-        this.contractClient.contractHash.slice(5)
-      ]);
-    }
-
     await this.eventStream.start();
 
-    this.eventStream.subscribe(EventName.DeployProcessed, deployProcessed => {
-      const {
-        execution_result,
-        timestamp,
-        deploy_hash: deployHash
-      } = deployProcessed.body.DeployProcessed;
+    this.eventStream.subscribe(
+      EventName.TransactionProcessed,
+      transactionProcessed => {
+        const results = this.parseTransactionProcessed(transactionProcessed);
 
-      if (!execution_result.Success || !this.parser) {
-        return;
+        results.forEach(event => this.emit(event));
       }
-
-      const results = this.parseExecutionResult(
-        execution_result as ExecutionResult
-      );
-
-      results
-        .map(
-          r =>
-            ({
-              ...r,
-              deployInfo: { deployHash, timestamp }
-            } as CEP18EventWithDeployInfo)
-        )
-        .forEach(event => this.emit(event));
-    });
+    );
   }
 
-  on(name: string, listener: (event: CEP18EventWithDeployInfo) => void) {
+  on(name: string, listener: (event: CEP18EventWithTransactionInfo) => void) {
     this.addEventListener(name, listener);
   }
 
   addEventListener(
     name: string,
-    listener: (event: CEP18EventWithDeployInfo) => void
+    listener: (event: CEP18EventWithTransactionInfo) => void
   ) {
     if (!this.events[name]) this.events[name] = [];
 
     this.events[name].push(listener);
   }
 
-  off(name: string, listener: (event: CEP18EventWithDeployInfo) => void) {
+  off(name: string, listener: (event: CEP18EventWithTransactionInfo) => void) {
     this.removeEventListener(name, listener);
   }
 
   removeEventListener(
     name: string,
-    listenerToRemove: (event: CEP18EventWithDeployInfo) => void
+    listenerToRemove: (event: CEP18EventWithTransactionInfo) => void
   ) {
     if (!this.events[name]) {
       throw new Error(
@@ -101,27 +90,21 @@ export default class EventEnabledContract {
     }
 
     const filterListeners = (
-      listener: (event: CEP18EventWithDeployInfo) => void
+      listener: (event: CEP18EventWithTransactionInfo) => void
     ) => listener !== listenerToRemove;
 
     this.events[name] = this.events[name].filter(filterListeners);
   }
 
-  emit(event: CEP18EventWithDeployInfo) {
+  emit(event: CEP18EventWithTransactionInfo) {
     this.events[event.name]?.forEach(cb => cb(event));
   }
 
-  parseExecutionResult(result: ExecutionResult): CEP18Event[] {
+  parseTransactionProcessed(
+    result: TransactionProcessed
+  ): CEP18EventWithTransactionInfo[] {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    const results = this.parser.parseExecutionResult(result);
-
-    return results
-      .filter(r => r.error === null)
-      .map(r => ({
-        ...r.event,
-        contractHash: `hash-${encodeBase16(r.event.contractHash)}`,
-        contractPackageHash: `hash-${encodeBase16(r.event.contractPackageHash)}`
-      })) as CEP18Event[];
+    return this.parser.parseTransactionProcessed(result);
   }
 }

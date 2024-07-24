@@ -1,20 +1,20 @@
-import { CLKey, CLU256, CLValue } from 'casper-js-sdk';
+import { CLKey, CLU256, CLValue, TransactionHash } from 'casper-js-sdk';
 
 export type Event<E extends Record<string, CLValue>> = {
-  name: string;
-  contractHash: `hash-${string}`;
-  contractPackageHash: `hash-${string}`;
+  name?: string;
+  contractHash: `entity-contract-${string}`;
+  contractPackageHash?: `hash-${string}`;
   data: E;
 };
 
-export interface DeployInfo {
-  deployHash: string;
+export interface TransactionInfo {
+  transactionHash: TransactionHash;
   timestamp: string;
 }
 
-export type WithDeployInfo<E> = E & { deployInfo: DeployInfo };
+export type WithTransactionInfo<E> = E & { transactionInfo: TransactionInfo };
 
-export type CEP18EventWithDeployInfo = WithDeployInfo<CEP18Event>;
+export type CEP18EventWithTransactionInfo = WithTransactionInfo<CEP18Event>;
 
 export type CEP18Event = Event<
   | Mint

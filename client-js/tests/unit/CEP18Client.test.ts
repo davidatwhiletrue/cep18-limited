@@ -5,7 +5,7 @@ import { BigNumber, type BigNumberish } from '@ethersproject/bignumber';
 import { type CLPublicKey, DeployUtil } from 'casper-js-sdk';
 
 import { ContractWASM } from '../../src';
-import CEP18Client from '../../src/CEP18Client';
+import CEP18Client, { toKeyEntityAddr } from '../../src/CEP18Client';
 import { InstallArgs } from '../../src/types';
 import { NETWORK_NAME, NODE_URL, users } from '../config';
 import APPROVE_ARGS_JSON from './json/approve-args.json';
@@ -34,10 +34,10 @@ describe('CEP18Client', () => {
 
   let spies: jest.SpyInstance[] = [];
 
-  const doApprove = (spender: CLPublicKey, amount: BigNumberish) => {
+  const doApprove = (spenderPubkey: CLPublicKey, amount: BigNumberish) => {
     const deploy = cep18.approve(
       {
-        spender,
+        spender: toKeyEntityAddr(spenderPubkey),
         amount
       },
       5_000_000_000,
@@ -67,7 +67,7 @@ describe('CEP18Client', () => {
     );
     const { deploy: JsonDeploy } = DeployUtil.deployToJson(deploy);
     cep18.setContractHash(
-      'hash-6797fc45c106bd1f4c9f00cb416d63fd71fecfb90ba8f9c24e597b678569d095'
+      'entity-contract-6797fc45c106bd1f4c9f00cb416d63fd71fecfb90ba8f9c24e597b678569d095'
     );
 
     const mockedFns = {
@@ -103,8 +103,8 @@ describe('CEP18Client', () => {
 
     expect(name).toBe(tokenInfo.name);
     expect(symbol).toBe(tokenInfo.symbol);
-    expect(decimals.eq(tokenInfo.decimals));
-    expect(totalSupply.eq(tokenInfo.totalSupply));
+    expect(decimals.toNumber()).toEqual(tokenInfo.decimals);
+    expect(totalSupply.toNumber()).toEqual(tokenInfo.totalSupply);
   });
 
   it('should construct approve args properly', () => {

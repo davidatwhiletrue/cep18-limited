@@ -2,16 +2,22 @@
   [
     "owner",
     {
-      "bytes": "0031dfd6356d4be001607bd2d6b163c9b23967873a849a96813781674cf5e4d96b",
+      "bytes": "00aff5c18a954604dd27d139d8e0cfc533ac3d53784d76c7a7ac5ff4039510fdf6",
       "cl_type": "Key"
     }
   ],
   [
     "recipient",
     {
-      "bytes": "00c7d4ae581e159882f9ec13bed23854a945ca648af9542bde6941123a78f4aca4",
+      "bytes": "00bfe707f56b46172965fd9e557d32582e5daf677b786bc44c5a584a5956962cea",
       "cl_type": "Key"
     }
   ],
-  ["amount", { "bytes": "0500c817a804", "cl_type": "U256" }]
+  [
+    "amount",
+    {
+      "bytes": "0500c817a804",
+      "cl_type": "U256"
+    }
+  ]
 ]
