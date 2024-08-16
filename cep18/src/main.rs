@@ -26,11 +26,8 @@ use entry_points::generate_entry_points;
 
 use casper_contract::{
     contract_api::{
-        runtime::{
-            self, call_contract, get_caller, get_key, get_named_arg, manage_message_topic, put_key,
-            revert,
-        },
-        storage::{self, dictionary_put, named_dictionary_get, named_dictionary_put, write},
+        runtime::{self, call_contract, get_caller, get_key, get_named_arg, put_key, revert},
+        storage::{self, dictionary_put, named_dictionary_get, named_dictionary_put},
     },
     unwrap_or_revert::UnwrapOrRevert,
 };
@@ -38,26 +35,25 @@ use casper_types::{
     addressable_entity::{EntityKindTag, NamedKeys},
     bytesrepr::ToBytes,
     contract_messages::MessageTopicOperation,
-    runtime_args, AddressableEntityHash, CLValue, EntityAddr, Key, PackageHash, URef, U256,
+    runtime_args, AddressableEntityHash, CLValue, EntityAddr, Key, PackageHash, U256,
 };
 
 use constants::{
     ACCESS_KEY_NAME_PREFIX, ADDRESS, ADMIN_LIST, ALLOWANCES, AMOUNT, BALANCES,
     CHANGE_EVENTS_MODE_ENTRY_POINT_NAME, CONDOR, CONTRACT_HASH, CONTRACT_NAME_PREFIX,
     CONTRACT_VERSION_PREFIX, DECIMALS, ENABLE_MINT_BURN, EVENTS, EVENTS_MODE, HASH_KEY_NAME_PREFIX,
-    INIT_ENTRY_POINT_NAME, LAZY_MIGRATE, LEGACY_KEY_COMPAT, MINTER_LIST, NAME, NONE_LIST, OWNER,
-    PACKAGE_HASH, RECIPIENT, SECURITY_BADGES, SPENDER, SYMBOL, TOTAL_SUPPLY, USER_KEY_MAP,
+    INIT_ENTRY_POINT_NAME, MINTER_LIST, NAME, NONE_LIST, OWNER, PACKAGE_HASH, RECIPIENT,
+    SECURITY_BADGES, SPENDER, SYMBOL, TOTAL_SUPPLY, USER_KEY_MAP,
 };
 pub use error::Cep18Error;
 use events::{
     init_events, Burn, ChangeEventsMode, ChangeSecurity, DecreaseAllowance, Event,
     IncreaseAllowance, Mint, SetAllowance, Transfer, TransferFrom,
 };
-use modalities::{EventsMode, LazyMigrate, LegacyKeyCompat};
+use modalities::EventsMode;
 use utils::{
     get_immediate_caller_key, get_optional_named_arg_with_user_errors, get_total_supply_uref,
-    lazy_migrate_allowance, lazy_migrate_balance, read_from, read_total_supply_from, sec_check,
-    write_total_supply_to, SecurityBadge,
+    read_from, read_total_supply_from, sec_check, write_total_supply_to, SecurityBadge,
 };
 
 #[no_mangle]
@@ -105,13 +101,6 @@ pub extern "C" fn balance_of() {
     let address: Key = runtime::get_named_arg(ADDRESS);
     let balances_uref = get_balances_uref();
     let balance = balances::read_balance_from(balances_uref, address);
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        lazy_migrate_balance(balances_uref, address);
-    }
     runtime::ret(
         CLValue::from_t(balance).unwrap_or_revert_with(Cep18Error::FailedToReturnEntryPointResult),
     );
@@ -122,17 +111,6 @@ pub extern "C" fn allowance() {
     let spender: Key = runtime::get_named_arg(SPENDER);
     let owner: Key = runtime::get_named_arg(OWNER);
     let allowances_uref = get_allowances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        let balances_uref = get_balances_uref();
-        lazy_migrate_balance(balances_uref, owner);
-        lazy_migrate_balance(balances_uref, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, owner, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, spender, owner);
-    }
     let val: U256 = read_allowance_from(allowances_uref, owner, spender);
     runtime::ret(
         CLValue::from_t(val).unwrap_or_revert_with(Cep18Error::FailedToReturnEntryPointResult),
@@ -149,17 +127,6 @@ pub extern "C" fn approve() {
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let allowances_uref = get_allowances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        let balances_uref = get_balances_uref();
-        lazy_migrate_balance(balances_uref, owner);
-        lazy_migrate_balance(balances_uref, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, owner, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, spender, owner);
-    }
     write_allowance_to(allowances_uref, owner, spender, amount);
     events::record_event_dictionary(Event::SetAllowance(SetAllowance {
         owner,
@@ -178,17 +145,6 @@ pub extern "C" fn decrease_allowance() {
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let allowances_uref = get_allowances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        let balances_uref = get_balances_uref();
-        lazy_migrate_balance(balances_uref, owner);
-        lazy_migrate_balance(balances_uref, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, owner, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, spender, owner);
-    }
     let current_allowance = read_allowance_from(allowances_uref, owner, spender);
     let new_allowance = current_allowance.saturating_sub(amount);
     write_allowance_to(allowances_uref, owner, spender, new_allowance);
@@ -210,17 +166,6 @@ pub extern "C" fn increase_allowance() {
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let allowances_uref = get_allowances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        let balances_uref = get_balances_uref();
-        lazy_migrate_balance(balances_uref, owner);
-        lazy_migrate_balance(balances_uref, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, owner, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, spender, owner);
-    }
     let current_allowance = read_allowance_from(allowances_uref, owner, spender);
     let new_allowance = current_allowance.saturating_add(amount);
     write_allowance_to(allowances_uref, owner, spender, new_allowance);
@@ -241,15 +186,6 @@ pub extern "C" fn transfer() {
         revert(Cep18Error::CannotTargetSelfUser);
     }
     let amount: U256 = runtime::get_named_arg(AMOUNT);
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        let balances_uref = get_balances_uref();
-        lazy_migrate_balance(balances_uref, sender);
-        lazy_migrate_balance(balances_uref, recipient);
-    }
     transfer_balance(sender, recipient, amount).unwrap_or_revert();
     events::record_event_dictionary(Event::Transfer(Transfer {
         sender,
@@ -273,25 +209,6 @@ pub extern "C" fn transfer_from() {
     }
 
     let allowances_uref = get_allowances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        let balances_uref = get_balances_uref();
-        lazy_migrate_balance(balances_uref, owner);
-        lazy_migrate_balance(balances_uref, spender);
-        lazy_migrate_balance(balances_uref, recipient);
-
-        lazy_migrate_allowance(balances_uref, allowances_uref, owner, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, owner, recipient);
-
-        lazy_migrate_allowance(balances_uref, allowances_uref, spender, owner);
-        lazy_migrate_allowance(balances_uref, allowances_uref, spender, recipient);
-
-        lazy_migrate_allowance(balances_uref, allowances_uref, recipient, spender);
-        lazy_migrate_allowance(balances_uref, allowances_uref, recipient, owner);
-    }
     let spender_allowance: U256 = read_allowance_from(allowances_uref, owner, spender);
     let new_spender_allowance = spender_allowance
         .checked_sub(amount)
@@ -319,13 +236,6 @@ pub extern "C" fn mint() {
     let amount: U256 = runtime::get_named_arg(AMOUNT);
 
     let balances_uref = get_balances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        lazy_migrate_balance(balances_uref, owner);
-    }
     let total_supply_uref = get_total_supply_uref();
     let new_balance = {
         let balance = read_balance_from(balances_uref, owner);
@@ -366,13 +276,6 @@ pub extern "C" fn burn() {
 
     let amount: U256 = runtime::get_named_arg(AMOUNT);
     let balances_uref = get_balances_uref();
-    if LazyMigrate::try_from(read_from::<u8>(LAZY_MIGRATE)).unwrap_or_default()
-        == LazyMigrate::Migrate
-        && LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_default()
-            == LegacyKeyCompat::Condor
-    {
-        lazy_migrate_balance(balances_uref, owner);
-    }
     let total_supply_uref = get_total_supply_uref();
     let new_balance = {
         let balance = read_balance_from(balances_uref, owner);
@@ -410,11 +313,7 @@ pub extern "C" fn init() {
         .unwrap_or_revert_with(Cep18Error::FailedToCreateDictionary);
     let initial_supply = runtime::get_named_arg(TOTAL_SUPPLY);
     let caller = get_caller();
-    let initial_balance_holder_key = if let 1_u8 = read_from(LEGACY_KEY_COMPAT) {
-        Key::Account(caller)
-    } else {
-        Key::AddressableEntity(EntityAddr::Account(caller.value()))
-    };
+    let initial_balance_holder_key = Key::Account(caller);
 
     write_balance_to(balances_uref, initial_balance_holder_key, initial_supply);
 
@@ -438,7 +337,7 @@ pub extern "C" fn init() {
     let events_mode: EventsMode = EventsMode::try_from(get_named_arg::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode) {
+    if [EventsMode::CES].contains(&events_mode) {
         init_events();
     }
 
@@ -638,57 +537,16 @@ fn change_events_mode() {
     let events_mode_u8 = events_mode as u8;
     put_key(EVENTS_MODE, storage::new_uref(events_mode_u8).into());
 
-    match events_mode {
-        EventsMode::NoEvents => {}
-        EventsMode::CES => init_events(),
-        EventsMode::Native => {
-            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
-        }
-        EventsMode::NativeNCES => {
-            init_events();
-            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
-        }
-        EventsMode::NativeBytes => {
-            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
-        }
-        EventsMode::NativeBytesNCES => {
-            init_events();
-            let _ = manage_message_topic(EVENTS, MessageTopicOperation::Add);
-        }
-    };
+    if get_key(casper_event_standard::EVENTS_DICT).is_some() {
+        init_events()
+    }
     events::record_event_dictionary(Event::ChangeEventsMode(ChangeEventsMode {
         events_mode: events_mode_u8,
     }));
 }
 
-#[no_mangle]
-fn change_modalities() {
-    sec_check(vec![SecurityBadge::Admin]);
-
-    let legacy_key_compat: u8 = get_optional_named_arg_with_user_errors(
-        LEGACY_KEY_COMPAT,
-        Cep18Error::InvalidLegacyKeyCompat,
-    )
-    .unwrap_or(0);
-    let lazy_migrate: u8 =
-        get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidMigrationMod)
-            .unwrap_or(0);
-
-    let legacy_compat_uref: URef = *get_key(LEGACY_KEY_COMPAT)
-        .unwrap_or_revert()
-        .as_uref()
-        .unwrap_or_revert();
-    write(legacy_compat_uref, legacy_key_compat);
-    let lazy_migrate_uref: URef = *get_key(LAZY_MIGRATE)
-        .unwrap_or_revert()
-        .as_uref()
-        .unwrap_or_revert();
-    write(lazy_migrate_uref, lazy_migrate);
-}
-
 pub fn upgrade(name: &str) {
     let entry_points = generate_entry_points();
-
     let old_contract_package_hash = match runtime::get_key(&format!("{HASH_KEY_NAME_PREFIX}{name}"))
         .unwrap_or_revert_with(Cep18Error::FailedToGetOldPackageKey)
     {
@@ -720,23 +578,7 @@ pub fn upgrade(name: &str) {
         }
     }
 
-    let legacy_key_compat: u8 = get_optional_named_arg_with_user_errors(
-        LEGACY_KEY_COMPAT,
-        Cep18Error::InvalidLegacyKeyCompat,
-    )
-    .unwrap_or(0);
-    let lazy_migrate: u8 =
-        get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidMigrationMod)
-            .unwrap_or(0);
     let mut named_keys = NamedKeys::new();
-    named_keys.insert(
-        LEGACY_KEY_COMPAT.to_string(),
-        storage::new_uref(legacy_key_compat).into(),
-    );
-    named_keys.insert(
-        LAZY_MIGRATE.to_string(),
-        storage::new_uref(lazy_migrate).into(),
-    );
     named_keys.insert(CONDOR.to_string(), storage::new_uref(CONDOR).into());
 
     let (contract_hash, contract_version) = storage::add_contract_version(
@@ -793,14 +635,6 @@ pub fn install_contract(name: &str) {
     let enable_mint_burn: u8 =
         get_optional_named_arg_with_user_errors(ENABLE_MINT_BURN, Cep18Error::InvalidEnableMBFlag)
             .unwrap_or(0);
-    let legacy_key_compat: u8 = get_optional_named_arg_with_user_errors(
-        LEGACY_KEY_COMPAT,
-        Cep18Error::InvalidLegacyKeyCompat,
-    )
-    .unwrap_or(0);
-    let lazy_migrate: u8 =
-        get_optional_named_arg_with_user_errors(LAZY_MIGRATE, Cep18Error::InvalidMigrationMod)
-            .unwrap_or(0);
 
     let mut named_keys = NamedKeys::new();
     named_keys.insert(NAME.to_string(), storage::new_uref(name).into());
@@ -818,20 +652,11 @@ pub fn install_contract(name: &str) {
         ENABLE_MINT_BURN.to_string(),
         storage::new_uref(enable_mint_burn).into(),
     );
-    named_keys.insert(
-        LEGACY_KEY_COMPAT.to_string(),
-        storage::new_uref(legacy_key_compat).into(),
-    );
-    named_keys.insert(
-        LAZY_MIGRATE.to_string(),
-        storage::new_uref(lazy_migrate).into(),
-    );
+
     let entry_points = generate_entry_points();
 
     let mut message_topics = BTreeMap::new();
-    if [EventsMode::Native, EventsMode::NativeNCES]
-        .contains(&events_mode.try_into().unwrap_or_default())
-    {
+    if [EventsMode::Native].contains(&events_mode.try_into().unwrap_or_default()) {
         message_topics.insert(EVENTS.to_string(), MessageTopicOperation::Add);
     };
 

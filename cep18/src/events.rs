@@ -1,8 +1,8 @@
 use core::convert::TryFrom;
 
-use alloc::{collections::BTreeMap, format};
+use alloc::{collections::BTreeMap, string::String};
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
-use casper_types::{bytesrepr::FromBytes, contract_messages::MessagePayload, Key, U256};
+use casper_types::{bytesrepr::Bytes, contract_messages::MessagePayload, Key, U256};
 
 use crate::{
     constants::{EVENTS, EVENTS_MODE},
@@ -12,6 +12,7 @@ use crate::{
 };
 
 use casper_event_standard::{emit, Event, Schemas};
+use serde::{Deserialize, Serialize};
 
 pub fn record_event_dictionary(event: Event) {
     let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
@@ -21,29 +22,16 @@ pub fn record_event_dictionary(event: Event) {
         EventsMode::NoEvents => {}
         EventsMode::CES => ces(event),
         EventsMode::Native => {
-            runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert()
+            runtime::emit_message(EVENTS, &event.to_json().into()).unwrap_or_revert()
         }
         EventsMode::NativeBytes => {
-            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes())
-                .unwrap_or_revert()
-                .0;
+            let payload = MessagePayload::Bytes(Bytes::from(event.to_json().as_bytes()));
             runtime::emit_message(EVENTS, &payload).unwrap_or_revert()
-        }
-        EventsMode::NativeNCES => {
-            runtime::emit_message(EVENTS, &format!("{event:?}").into()).unwrap_or_revert();
-            ces(event);
-        }
-        EventsMode::NativeBytesNCES => {
-            let payload = MessagePayload::from_bytes(format!("{event:?}").as_bytes())
-                .unwrap_or_revert()
-                .0;
-            runtime::emit_message(EVENTS, &payload).unwrap_or_revert();
-            ces(event);
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Event {
     Mint(Mint),
     Burn(Burn),
@@ -56,26 +44,26 @@ pub enum Event {
     ChangeEventsMode(ChangeEventsMode),
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct Mint {
     pub recipient: Key,
     pub amount: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct Burn {
     pub owner: Key,
     pub amount: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct SetAllowance {
     pub owner: Key,
     pub spender: Key,
     pub allowance: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct IncreaseAllowance {
     pub owner: Key,
     pub spender: Key,
@@ -83,7 +71,7 @@ pub struct IncreaseAllowance {
     pub inc_by: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct DecreaseAllowance {
     pub owner: Key,
     pub spender: Key,
@@ -91,14 +79,14 @@ pub struct DecreaseAllowance {
     pub decr_by: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct Transfer {
     pub sender: Key,
     pub recipient: Key,
     pub amount: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct TransferFrom {
     pub spender: Key,
     pub owner: Key,
@@ -106,13 +94,13 @@ pub struct TransferFrom {
     pub amount: U256,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct ChangeSecurity {
     pub admin: Key,
     pub sec_change_map: BTreeMap<Key, SecurityBadge>,
 }
 
-#[derive(Event, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Event, Debug, PartialEq, Eq)]
 pub struct ChangeEventsMode {
     pub events_mode: u8,
 }
@@ -135,7 +123,7 @@ pub fn init_events() {
     let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if [EventsMode::CES, EventsMode::NativeNCES].contains(&events_mode)
+    if [EventsMode::CES].contains(&events_mode)
         && runtime::get_key(casper_event_standard::EVENTS_DICT).is_none()
     {
         let schemas = Schemas::new()
@@ -149,5 +137,13 @@ pub fn init_events() {
             .with::<ChangeSecurity>()
             .with::<ChangeEventsMode>();
         casper_event_standard::init(schemas);
+    }
+}
+
+impl Event {
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self)
+            .map_err(|_| Cep18Error::FailedToConvertToJson)
+            .unwrap_or_revert()
     }
 }

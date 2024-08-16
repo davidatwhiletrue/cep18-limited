@@ -15,17 +15,15 @@ use casper_types::{
     account::AccountHash,
     api_error,
     bytesrepr::{self, FromBytes, ToBytes},
-    system::{CallStackElement, Caller},
+    system::CallStackElement,
     ApiError, CLTyped, EntityAddr, Key, URef, U256,
 };
 
 use crate::{
-    allowances::{read_allowance_from, write_allowance_to},
-    balances::{read_balance_from, write_balance_to},
-    constants::{LEGACY_KEY_COMPAT, SECURITY_BADGES, TOTAL_SUPPLY},
+    constants::{SECURITY_BADGES, TOTAL_SUPPLY},
     error::Cep18Error,
-    modalities::LegacyKeyCompat,
 };
+use serde::{Deserialize, Serialize};
 
 /// Gets [`URef`] under a name.
 pub(crate) fn get_uref(name: &str) -> URef {
@@ -48,20 +46,11 @@ where
     value
 }
 
-fn call_stack_element_to_address(call_stack_element: Caller) -> Key {
-    match call_stack_element {
-        Caller::Initiator { account_hash } => {
-            Key::AddressableEntity(EntityAddr::Account(account_hash.value()))
-        }
-        Caller::Entity { package_hash, .. } => Key::Package(package_hash.value()),
-    }
-}
-
 /// Returns address based on a [`CallStackElement`].
 ///
 /// For `Session` and `StoredSession` variants it will return account hash, and for `StoredContract`
 /// case it will use contract package hash as the address.
-fn call_stack_element_to_address_legacy(call_stack_element: CallStackElement) -> Key {
+fn call_stack_element_to_address(call_stack_element: CallStackElement) -> Key {
     match call_stack_element {
         CallStackElement::Session { account_hash } => Key::from(account_hash),
         CallStackElement::StoredSession { account_hash, .. } => {
@@ -120,35 +109,18 @@ pub(crate) fn read_host_buffer(size: usize) -> Result<Vec<u8>, ApiError> {
     Ok(dest)
 }
 
-pub(crate) fn get_immediate_caller_address() -> Result<Key, Cep18Error> {
-    let call_stack = runtime::get_call_stack();
+/// Gets the immediate session caller of the current execution.
+///
+/// This function ensures that Contracts can participate and no middleman (contract) acts for
+/// users.
+pub(crate) fn get_immediate_caller_key() -> Result<Key, Cep18Error> {
+    let call_stack = get_call_stack();
     call_stack
         .into_iter()
         .rev()
         .nth(1)
         .map(call_stack_element_to_address)
         .ok_or(Cep18Error::InvalidContext)
-}
-
-/// Gets the immediate session caller of the current execution.
-///
-/// This function ensures that Contracts can participate and no middleman (contract) acts for
-/// users.
-pub(crate) fn get_immediate_caller_address_legacy() -> Result<Key, Cep18Error> {
-    let call_stack = get_call_stack();
-    call_stack
-        .into_iter()
-        .rev()
-        .nth(1)
-        .map(call_stack_element_to_address_legacy)
-        .ok_or(Cep18Error::InvalidContext)
-}
-
-pub(crate) fn get_immediate_caller_key() -> Result<Key, Cep18Error> {
-    match LegacyKeyCompat::try_from(read_from::<u8>(LEGACY_KEY_COMPAT)).unwrap_or_revert() {
-        LegacyKeyCompat::Condor => get_immediate_caller_address(),
-        LegacyKeyCompat::Legacy => get_immediate_caller_address_legacy(),
-    }
 }
 
 pub fn get_total_supply_uref() -> URef {
@@ -226,7 +198,7 @@ pub fn get_named_arg_with_user_errors<T: FromBytes>(
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SecurityBadge {
     Admin = 0,
     Minter = 1,
@@ -312,78 +284,4 @@ pub fn change_sec_badge(badge_map: &BTreeMap<Key, SecurityBadge>) {
             badge,
         )
     }
-}
-
-pub fn lazy_migrate_balance(balances_uref: URef, new_user_key: Key) {
-    let legacy_user = match new_user_key {
-        Key::Package(hash) => Key::Hash(hash),
-        Key::AddressableEntity(EntityAddr::Account(account)) => {
-            Key::Account(AccountHash::new(account))
-        }
-        _ => revert(Cep18Error::InvalidKeyType),
-    };
-    let mut new_account_existing_balance = read_balance_from(balances_uref, new_user_key);
-    let legacy_account_balance = read_balance_from(balances_uref, legacy_user);
-    new_account_existing_balance = new_account_existing_balance
-        .checked_add(legacy_account_balance)
-        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
-
-    write_balance_to(balances_uref, new_user_key, new_account_existing_balance);
-    write_balance_to(balances_uref, legacy_user, U256::zero());
-}
-
-pub fn lazy_migrate_allowance(
-    balances_uref: URef,
-    allowances_uref: URef,
-    new_owner_key: Key,
-    new_spender_key: Key,
-) {
-    let legacy_owner = match new_owner_key {
-        Key::Package(hash) => Key::Hash(hash),
-        Key::AddressableEntity(EntityAddr::Account(account)) => {
-            Key::Account(AccountHash::new(account))
-        }
-        _ => revert(Cep18Error::InvalidKeyType),
-    };
-    let legacy_spender = match new_spender_key {
-        Key::Package(hash) => Key::Hash(hash),
-        Key::AddressableEntity(EntityAddr::Account(account)) => {
-            Key::Account(AccountHash::new(account))
-        }
-        _ => revert(Cep18Error::InvalidKeyType),
-    };
-    let mut new_account_existing_balance =
-        read_allowance_from(allowances_uref, new_owner_key, new_spender_key);
-    let legacy_owner_legacy_spender_balance =
-        read_allowance_from(allowances_uref, legacy_owner, legacy_spender);
-    let legacy_owner_new_spender_balance =
-        read_allowance_from(allowances_uref, legacy_owner, new_spender_key);
-    let new_owner_legacy_spender_balance =
-        read_allowance_from(allowances_uref, new_owner_key, legacy_spender);
-
-    new_account_existing_balance = new_account_existing_balance
-        .checked_add(legacy_owner_legacy_spender_balance)
-        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
-
-    new_account_existing_balance = new_account_existing_balance
-        .checked_add(legacy_owner_new_spender_balance)
-        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
-
-    new_account_existing_balance = new_account_existing_balance
-        .checked_add(new_owner_legacy_spender_balance)
-        .unwrap_or_revert_with(Cep18Error::InsufficientBalance);
-
-    if new_account_existing_balance > read_balance_from(balances_uref, new_owner_key) {
-        revert(Cep18Error::InsufficientMigratedBalance);
-    }
-
-    write_allowance_to(
-        allowances_uref,
-        new_owner_key,
-        new_spender_key,
-        new_account_existing_balance,
-    );
-    write_allowance_to(allowances_uref, legacy_owner, legacy_spender, U256::zero());
-    write_allowance_to(allowances_uref, legacy_owner, new_spender_key, U256::zero());
-    write_allowance_to(allowances_uref, new_owner_key, legacy_spender, U256::zero());
 }

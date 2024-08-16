@@ -1,5 +1,7 @@
-use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR};
-use casper_types::{runtime_args, AddressableEntityHash, ApiError, EntityAddr, Key, U256};
+use casper_engine_test_support::{
+    ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_KEY,
+};
+use casper_types::{runtime_args, AddressableEntityHash, ApiError, Key, U256};
 
 use crate::utility::{
     constants::{
@@ -25,9 +27,9 @@ fn should_approve_funds_contract_to_account() {
     test_approve_for(
         &mut builder,
         &test_context,
-        Key::Package(cep18_test_contract_package.value()),
-        Key::Package(cep18_test_contract_package.value()),
-        Key::AddressableEntity(EntityAddr::Account(DEFAULT_ACCOUNT_ADDR.value())),
+        Key::Hash(cep18_test_contract_package.value()),
+        Key::Hash(cep18_test_contract_package.value()),
+        Key::Account(*DEFAULT_ACCOUNT_ADDR),
     );
 }
 
@@ -42,9 +44,9 @@ fn should_approve_funds_contract_to_contract() {
     test_approve_for(
         &mut builder,
         &test_context,
-        Key::Package(cep18_test_contract_package.value()),
-        Key::Package(cep18_test_contract_package.value()),
-        Key::Package([42; 32]),
+        Key::Hash(cep18_test_contract_package.value()),
+        Key::Hash(cep18_test_contract_package.value()),
+        Key::Hash([42; 32]),
     );
 }
 
@@ -52,8 +54,9 @@ fn should_approve_funds_contract_to_contract() {
 fn should_approve_funds_account_to_account() {
     let (mut builder, test_context) = setup();
 
-    let (default_account_user_key, _, _) = get_test_account("ACCOUNT_USER_0");
-    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
+    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
+    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
+    let account_user_1_key = Key::Account(account_user_1_account_hash);
 
     test_approve_for(
         &mut builder,
@@ -68,14 +71,12 @@ fn should_approve_funds_account_to_account() {
 fn should_approve_funds_account_to_contract() {
     let (mut builder, test_context) = setup();
 
-    let (default_account_user_key, _, _) = get_test_account("ACCOUNT_USER_0");
-
     test_approve_for(
         &mut builder,
         &test_context,
-        default_account_user_key,
-        default_account_user_key,
-        Key::Package([42; 32]),
+        Key::Account(*DEFAULT_ACCOUNT_KEY),
+        Key::Account(*DEFAULT_ACCOUNT_KEY),
+        Key::Hash([42; 32]),
     );
 }
 
@@ -89,9 +90,8 @@ fn should_not_transfer_from_without_enough_allowance() {
         },
     ) = setup();
 
-    let (default_account_user_key, default_account_user_account_hash, _) =
-        get_test_account("ACCOUNT_USER_0");
-    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
+    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
+    let (_, hash, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
 
@@ -99,9 +99,9 @@ fn should_not_transfer_from_without_enough_allowance() {
     let transfer_from_amount_1 = allowance_amount_1 + U256::one();
 
     let sender = default_account_user_account_hash;
-    let sender_key = default_account_user_key;
+    let sender_key = Key::Account(*DEFAULT_ACCOUNT_KEY);
     let owner_key = sender_key;
-    let recipient_key = account_user_1_key;
+    let recipient_key = Key::Account(hash);
 
     let cep18_approve_args = runtime_args! {
         ARG_OWNER => owner_key,
@@ -164,8 +164,8 @@ fn test_decrease_allowance() {
     let owner = *DEFAULT_ACCOUNT_ADDR;
     let spender = Key::Hash([42; 32]);
 
-    let owner_key = Key::AddressableEntity(EntityAddr::Account(owner.value()));
-    let spender_key = Key::AddressableEntity(EntityAddr::SmartContract([42; 32]));
+    let owner_key = Key::Account(owner);
+    let spender_key = Key::Hash([42; 32]);
 
     let allowance_amount_1 = U256::from(ALLOWANCE_AMOUNT_1);
     let allowance_amount_2 = U256::from(ALLOWANCE_AMOUNT_2);

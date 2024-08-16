@@ -23,3 +23,6 @@ casper-contract = { git = "https://github.com/casper-network/casper-node.git", b
 hex = { version = "0.4.3", default-features = false }
 once_cell = { version = "1.16.0", default-features = false }
 casper-event-standard = { git = "https://github.com/deuszex/casper-event-standard", branch = "feat-2.0", default-features = false }
+serde = { version = "1.0.80", default-features = false }
+serde_json = { version = "1.0.59", default-features = false }
+serde-json-wasm = { version = "1.0.1", default-features = false }

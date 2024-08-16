@@ -66,14 +66,12 @@ pub enum Cep18Error {
     FailedToDisableContractVersion = 60035,
     FailedToInsertToSecurityList = 60036,
     UrefNotFound = 60037,
-    InvalidLegacyKeyCompat = 60038,
+    FailedToGetOldContractHashKey = 60038,
     FailedToGetOldPackageKey = 60039,
     FailedToGetPackageKey = 60040,
-    FailedToGetOldContractHashKey = 60041,
-    UnchangedEventsMode = 60042,
-    InvalidCompatibilityMod = 60043,
-    InvalidMigrationMod = 60044,
-    InsufficientMigratedBalance = 60045,
+    UnchangedEventsMode = 60041,
+    InsufficientMigratedBalance = 60042,
+    FailedToConvertToJson = 60043,
 }
 
 impl From<Cep18Error> for ApiError {

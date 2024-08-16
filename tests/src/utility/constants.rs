@@ -57,7 +57,6 @@ pub const METHOD_FROM_AS_STORED_CONTRACT: &str = "transfer_from_as_stored_contra
 
 pub const TOKEN_OWNER_ADDRESS_1: Key = Key::AddressableEntity(EntityAddr::Account([42; 32]));
 pub const TOKEN_OWNER_AMOUNT_1: u64 = 1_000_000;
-pub const TOKEN_OWNER_ADDRESS_2: Key = Key::AddressableEntity(EntityAddr::SmartContract([42; 32]));
 pub const TOKEN_OWNER_AMOUNT_2: u64 = 2_000_000;
 pub const TOKEN_OWNER_ADDRESS_1_OLD: Key = Key::Account(AccountHash::new([42; 32]));
 pub const TOKEN_OWNER_ADDRESS_2_OLD: Key = Key::Hash([42; 32]);
@@ -78,6 +77,3 @@ pub const EVENTS_MODE: &str = "events_mode";
 pub const MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_balance_keys";
 pub const _MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_allowance_keys";
 pub const MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME: &str = "migrate_sec_keys";
-pub const LEGACY_KEY_COMPAT: &str = "legacy_key_compat";
-pub const CHANGE_MODALITIES: &str = "change_modalities";
-pub const LAZY_MIGRATE: &str = "lazy_migrate";

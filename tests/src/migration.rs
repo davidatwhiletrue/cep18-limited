@@ -138,7 +138,7 @@ fn should_migrate_1_5_6_to_2_0_0_rc3() {
             ARG_SYMBOL => TOKEN_SYMBOL,
             ARG_DECIMALS => TOKEN_DECIMALS,
             ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
-            EVENTS_MODE => 3_u8
+            EVENTS_MODE => 2_u8,
         },
     )
     .build();
@@ -231,7 +231,7 @@ fn should_have_native_events() {
             ARG_SYMBOL => TOKEN_SYMBOL,
             ARG_DECIMALS => TOKEN_DECIMALS,
             ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
-            EVENTS_MODE => 3_u8
+            EVENTS_MODE => 3_u8,
         },
     )
     .build();
