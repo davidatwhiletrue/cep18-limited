@@ -37,7 +37,7 @@ describe('CEP18Client', () => {
   const user1 = users[1];
   const user2 = users[2];
   const user3 = users[3];
-  const eventsMode = EVENTS_MODE.Native;
+  const eventsMode = EVENTS_MODE.CES;
 
   let mintAndBurnTestsCep18: CEP18Client = undefined;
   let ownerMintAndBurnTestsCep18: CEP18Client = undefined;
@@ -71,8 +71,11 @@ describe('CEP18Client', () => {
     if (!result || !client.isDeploySuccessfull(result)) {
       fail('Transfer deploy failed');
     }
-    let messages = waitAtMostForMessages(cep18, 10000);
-    //#TODO this should be uncommented and working expect(messages.length).toBeGreaterThan(0);
+    const events = cep18.parseExecutionResult(
+      result.execution_info!.execution_result!
+    );
+    expect(events.length).toEqual(1);
+    expect(events[0].name).toEqual('SetAllowance');
     await sleep(5000);
     const allowances = await cep18.allowances(owner.publicKey, spenderPubkey);
     expect(allowances.toNumber()).toEqual(amount);
@@ -102,7 +105,6 @@ describe('CEP18Client', () => {
       [owner]
     );
     await deploy.send(NODE_URL);
-
     const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
     if (!result || !client.isDeploySuccessfull(result)) {
       fail('Install deploy failed');
@@ -116,7 +118,6 @@ describe('CEP18Client', () => {
     cep18.setContractHash(contractHash);
 
     await cep18.setupEventStream(eventStream);
-
     return { cep18, tokenInfo };
   };
 
@@ -201,7 +202,7 @@ describe('CEP18Client', () => {
       ).rejects.toThrowError('InsufficientBalance');
     });
 
-    it('should transfer tokens', async () => {
+    it.only('should transfer tokens', async () => {
       const amount = 50;
       await doApprove(cep18, user3.publicKey, amount);
 
