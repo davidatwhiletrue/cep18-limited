@@ -487,7 +487,6 @@ export default class CEP18Client extends TypedContract {
     owner: CLPublicKey,
     spender: CLPublicKey
   ): Promise<BigNumber> {
-    //#TODO make assembling keys simpler
     let keyOwner = toAccountKeyBytes(owner);
     let keySpender = toAccountKeyBytes(spender);
 
