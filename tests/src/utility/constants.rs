@@ -71,9 +71,5 @@ pub const MINTER_LIST: &str = "minter_list";
 pub const NONE_LIST: &str = "none_list";
 pub const CHANGE_SECURITY: &str = "change_security";
 
-pub const USER_KEY_MAP: &str = "user_key_map";
 pub const EVENTS: &str = "events";
 pub const EVENTS_MODE: &str = "events_mode";
-pub const MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_balance_keys";
-pub const _MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_allowance_keys";
-pub const MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME: &str = "migrate_sec_keys";

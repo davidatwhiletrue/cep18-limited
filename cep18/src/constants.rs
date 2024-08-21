@@ -47,9 +47,6 @@ pub const BURN_ENTRY_POINT_NAME: &str = "burn";
 pub const INIT_ENTRY_POINT_NAME: &str = "init";
 /// Name of `change_security` entry point.
 pub const CHANGE_SECURITY_ENTRY_POINT_NAME: &str = "change_security";
-pub const MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_balance_keys";
-pub const MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME: &str = "migrate_user_allowance_keys";
-pub const MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME: &str = "migrate_sec_keys";
 pub const CHANGE_EVENTS_MODE_ENTRY_POINT_NAME: &str = "change_events_mode";
 
 pub const INCREASE_ALLOWANCE_ENTRY_POINT_NAME: &str = "increase_allowance";

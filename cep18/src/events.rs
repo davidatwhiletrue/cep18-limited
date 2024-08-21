@@ -32,6 +32,7 @@ pub fn record_event_dictionary(event: Event) {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum Event {
     Mint(Mint),
     Burn(Burn),
@@ -123,7 +124,7 @@ pub fn init_events() {
     let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
         .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if [EventsMode::CES].contains(&events_mode)
+    if EventsMode::CES == events_mode
         && runtime::get_key(casper_event_standard::EVENTS_DICT).is_none()
     {
         let schemas = Schemas::new()

@@ -110,7 +110,7 @@ pub(crate) fn get_test_account(ending_string_index: &str) -> (Key, AccountHash, 
     let accounts = if let Some(account) = DEFAULT_ACCOUNTS.clone().get(index) {
         let public_key = account.public_key().clone();
         let account_hash = public_key.to_account_hash();
-        let entity_addr = Key::AddressableEntity(EntityAddr::Account(account_hash.value()));
+        let entity_addr = Key::Account(account_hash);
         Some((entity_addr, account_hash, public_key))
     } else {
         None

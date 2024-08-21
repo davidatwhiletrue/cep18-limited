@@ -55,8 +55,7 @@ fn should_approve_funds_account_to_account() {
     let (mut builder, test_context) = setup();
 
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
+    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
     test_approve_for(
         &mut builder,
@@ -90,18 +89,16 @@ fn should_not_transfer_from_without_enough_allowance() {
         },
     ) = setup();
 
-    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
-    let (_, hash, _) = get_test_account("ACCOUNT_USER_1");
+    let (_, sender, _) = get_test_account("ACCOUNT_USER_0");
+    let (recipient_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
 
     let allowance_amount_1 = U256::from(ALLOWANCE_AMOUNT_1);
     let transfer_from_amount_1 = allowance_amount_1 + U256::one();
 
-    let sender = default_account_user_account_hash;
     let sender_key = Key::Account(*DEFAULT_ACCOUNT_KEY);
     let owner_key = sender_key;
-    let recipient_key = Key::Account(hash);
 
     let cep18_approve_args = runtime_args! {
         ARG_OWNER => owner_key,

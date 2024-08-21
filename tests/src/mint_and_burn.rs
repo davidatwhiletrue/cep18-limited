@@ -317,7 +317,7 @@ fn test_should_not_mint_or_burn_with_entrypoint_disabled() {
 
 #[test]
 fn test_security_no_rights() {
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
+    let (account_user_1_key, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
 
     let mint_amount = U256::one();
 
@@ -334,7 +334,7 @@ fn test_security_no_rights() {
         ARG_TOTAL_SUPPLY => U256::from(TOKEN_TOTAL_SUPPLY),
         ENABLE_MINT_BURN => true,
     });
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
+
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
     let mint_request = ExecuteRequestBuilder::contract_call_by_hash(
         account_user_1_account_hash,
@@ -388,9 +388,8 @@ fn test_security_no_rights() {
 
 #[test]
 fn test_security_minter_rights() {
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
+    let (account_user_1_key, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
     let mint_amount = U256::one();
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
 
     let (
         mut builder,
@@ -494,9 +493,8 @@ fn test_security_burner_rights() {
 
 #[test]
 fn test_change_security() {
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
+    let (account_user_1_key, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
     let mint_amount = U256::one();
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
 
     let (
         mut builder,

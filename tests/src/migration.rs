@@ -11,10 +11,8 @@ use crate::utility::{
     constants::{
         AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_SYMBOL, ARG_TOTAL_SUPPLY, CEP18_CONTRACT_WASM,
         CEP18_TEST_CONTRACT_WASM, CEP18_TOKEN_CONTRACT_KEY, CEP18_TOKEN_CONTRACT_VERSION_KEY,
-        EVENTS, EVENTS_MODE, METHOD_MINT, MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME,
-        MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME, OWNER, TOKEN_DECIMALS, TOKEN_NAME,
-        TOKEN_OWNER_ADDRESS_1, TOKEN_OWNER_ADDRESS_1_OLD, TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL,
-        TOKEN_TOTAL_SUPPLY, USER_KEY_MAP,
+        EVENTS, EVENTS_MODE, METHOD_MINT, OWNER, TOKEN_DECIMALS, TOKEN_NAME, TOKEN_OWNER_ADDRESS_1,
+        TOKEN_OWNER_ADDRESS_1_OLD, TOKEN_OWNER_AMOUNT_1, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY,
     },
     installer_request_builders::cep18_check_balance_of,
     message_handlers::{entity, message_summary, message_topic},
@@ -152,24 +150,6 @@ fn should_migrate_1_5_6_to_2_0_0_rc3() {
 
     let cep18_contract_hash = get_contract_hash_v2_binary(&builder);
 
-    // use utility entrypoint to migrate the security keys in cep-18
-    let mut user_map: Vec<Key> = Vec::new();
-    user_map.push(Key::Account(*DEFAULT_ACCOUNT_ADDR));
-    user_map.push(TOKEN_OWNER_ADDRESS_1_OLD);
-
-    let sec_key_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
-        *DEFAULT_ACCOUNT_ADDR,
-        cep18_contract_hash,
-        MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
-        runtime_args! {USER_KEY_MAP => &user_map},
-    )
-    .build();
-
-    builder
-        .exec(sec_key_migrate_request)
-        .expect_success()
-        .commit();
-
     // mint some new tokens in cep-18
     let mint_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
@@ -193,26 +173,6 @@ fn should_migrate_1_5_6_to_2_0_0_rc3() {
     assert_eq!(
         cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_1),
         U256::from(TOKEN_OWNER_AMOUNT_1),
-    );
-
-    // migrate the balances from the old owner keys to the new ones in cep-18
-    let balance_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
-        *DEFAULT_ACCOUNT_ADDR,
-        cep18_contract_hash,
-        MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME,
-        runtime_args! {USER_KEY_MAP => user_map},
-    )
-    .build();
-
-    builder
-        .exec(balance_migrate_request)
-        .expect_success()
-        .commit();
-
-    // even if we minted before migrating, the balance should persist
-    assert_eq!(
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, TOKEN_OWNER_ADDRESS_1),
-        U256::from(TOKEN_OWNER_AMOUNT_1 * 2),
     );
 }
 
@@ -248,23 +208,6 @@ fn should_have_native_events() {
         .iter()
         .last()
         .expect("should have at least one topic");
-
-    let mut user_map: Vec<Key> = Vec::new();
-    user_map.push(Key::Account(*DEFAULT_ACCOUNT_ADDR));
-    user_map.push(TOKEN_OWNER_ADDRESS_1_OLD);
-
-    let sec_key_migrate_request = ExecuteRequestBuilder::contract_call_by_hash(
-        *DEFAULT_ACCOUNT_ADDR,
-        cep18_token,
-        MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
-        runtime_args! {USER_KEY_MAP => &user_map},
-    )
-    .build();
-
-    builder
-        .exec(sec_key_migrate_request)
-        .expect_success()
-        .commit();
 
     assert_eq!(topic_name, &EVENTS.to_string());
 

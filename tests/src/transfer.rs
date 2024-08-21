@@ -31,8 +31,7 @@ fn should_transfer_full_owned_amount() {
     ) = setup();
 
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_hash);
+    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
     let initial_supply = U256::from(TOKEN_TOTAL_SUPPLY);
@@ -90,10 +89,9 @@ fn should_not_transfer_more_than_owned_balance() {
         },
     ) = setup();
 
-    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_hash);
+    let (default_account_user_key, default_account_user_account_hash, _) =
+        get_test_account("ACCOUNT_USER_0");
+    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
 
@@ -159,10 +157,9 @@ fn should_transfer_from_from_account_to_account() {
         },
     ) = setup();
 
-    let (_, default_account_user_account_hash, _) = get_test_account("ACCOUNT_USER_0");
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
+    let (default_account_user_key, default_account_user_account_hash, _) =
+        get_test_account("ACCOUNT_USER_0");
+    let (account_user_1_key, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
 
@@ -246,8 +243,7 @@ fn should_transfer_from_account_by_contract() {
     ) = setup();
 
     let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
+    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
 
@@ -369,22 +365,20 @@ fn should_not_be_able_to_own_transfer_from() {
         },
     ) = setup();
 
-    let (_, default_account_account_hash, _) = get_test_account("ACCOUNT_USER_0");
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
+    let (default_account_user_key, default_account_account_hash, _) =
+        get_test_account("ACCOUNT_USER_0");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
-
-    let sender = default_account_account_hash;
-    let owner = default_account_user_key;
-    let spender = default_account_user_key;
-    let sender_key = default_account_user_key;
-    let recipient = default_account_user_key;
 
     let allowance_amount = U256::from(ALLOWANCE_AMOUNT_1);
     let transfer_amount = U256::from(TRANSFER_AMOUNT_1);
 
-    let approve_request =
-        make_cep18_approve_request(sender_key, &cep18_contract_hash, spender, allowance_amount);
+    let approve_request = make_cep18_approve_request(
+        default_account_user_key,
+        &cep18_contract_hash,
+        default_account_user_key,
+        allowance_amount,
+    );
 
     builder.exec(approve_request).commit();
 
@@ -396,20 +390,20 @@ fn should_not_be_able_to_own_transfer_from() {
     );
 
     let sender_balance_before =
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, sender_key);
+        cep18_check_balance_of(&mut builder, &cep18_contract_hash, default_account_user_key);
     let recipient_balance_before =
-        cep18_check_balance_of(&mut builder, &cep18_contract_hash, recipient);
+        cep18_check_balance_of(&mut builder, &cep18_contract_hash, default_account_user_key);
 
     assert_eq!(sender_balance_before, recipient_balance_before);
 
     let transfer_from_request = {
         let cep18_transfer_from_args = runtime_args! {
-            ARG_OWNER => owner,
-            ARG_RECIPIENT => recipient,
+            ARG_OWNER => default_account_user_key,
+            ARG_RECIPIENT => default_account_user_key,
             ARG_AMOUNT => transfer_amount,
         };
         ExecuteRequestBuilder::contract_call_by_hash(
-            sender,
+            default_account_account_hash,
             addressable_cep18_contract_hash,
             METHOD_TRANSFER_FROM,
             cep18_transfer_from_args,
@@ -437,12 +431,8 @@ fn should_verify_zero_amount_transfer_is_noop() {
         },
     ) = setup();
 
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
-
-    let sender = default_account_user_key;
-    let recipient = account_user_1_key;
+    let sender = Key::Account(*DEFAULT_ACCOUNT_ADDR);
+    let (recipient, _, _) = get_test_account("ACCOUNT_USER_1");
 
     let transfer_amount = U256::zero();
 
@@ -476,18 +466,12 @@ fn should_verify_zero_amount_transfer_from_is_noop() {
         },
     ) = setup();
 
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
-    let (_, account_user_2_account_hash, _) = get_test_account("ACCOUNT_USER_2");
-    let account_user_2_key = Key::Account(account_user_2_account_hash);
+    let owner = *DEFAULT_ACCOUNT_ADDR;
+    let owner_key = Key::Account(owner);
+    let (spender, _, _) = get_test_account("ACCOUNT_USER_1");
+    let (recipient, _, _) = get_test_account("ACCOUNT_USER_2");
 
     let addressable_cep18_contract_hash = AddressableEntityHash::new(cep18_contract_hash.value());
-
-    let owner = *DEFAULT_ACCOUNT_ADDR;
-    let owner_key = default_account_user_key;
-    let spender = account_user_1_key;
-    let recipient = account_user_2_key;
 
     let allowance_amount = U256::from(1);
     let transfer_amount = U256::zero();
@@ -568,15 +552,12 @@ fn should_transfer_contract_to_account() {
         ..
     } = test_context;
 
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
+    let sender1 = Key::Account(*DEFAULT_ACCOUNT_ADDR);
+    let (recipient2, _, _) = get_test_account("ACCOUNT_USER_1");
 
-    let sender1 = default_account_user_key;
     let recipient1 = Key::Hash(cep18_test_contract_package.value());
 
     let sender2 = Key::Hash(cep18_test_contract_package.value());
-    let recipient2 = account_user_1_key;
 
     test_cep18_transfer(
         &mut builder,
@@ -592,11 +573,9 @@ fn should_transfer_contract_to_account() {
 fn should_transfer_account_to_contract() {
     let (mut builder, test_context) = setup();
 
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
+    let sender1 = Key::Account(*DEFAULT_ACCOUNT_ADDR);
+    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
 
-    let sender1 = default_account_user_key;
     let recipient1 = account_user_1_key;
     let sender2 = account_user_1_key;
     let recipient2 = Key::Hash(test_context.cep18_test_contract_package.value());
@@ -615,13 +594,10 @@ fn should_transfer_account_to_contract() {
 fn should_transfer_account_to_account() {
     let (mut builder, test_context) = setup();
 
-    let default_account_user_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
-    let (_, account_user_1_account_hash, _) = get_test_account("ACCOUNT_USER_1");
-    let account_user_1_key = Key::Account(account_user_1_account_hash);
-    let (_, account_user_2_account_hash, _) = get_test_account("ACCOUNT_USER_2");
-    let account_user_2_key = Key::Account(account_user_2_account_hash);
+    let sender1 = Key::Account(*DEFAULT_ACCOUNT_ADDR);
+    let (account_user_1_key, _, _) = get_test_account("ACCOUNT_USER_1");
+    let (account_user_2_key, _, _) = get_test_account("ACCOUNT_USER_2");
 
-    let sender1 = default_account_user_key;
     let recipient1 = account_user_1_key;
     let sender2 = account_user_1_key;
     let recipient2 = account_user_2_key;

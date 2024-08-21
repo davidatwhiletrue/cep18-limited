@@ -71,6 +71,7 @@ pub fn get_call_stack() -> Vec<CallStackElement> {
         let mut call_stack_len: usize = 0;
         let mut result_size: usize = 0;
         let ret = unsafe {
+            #[allow(deprecated)]
             ext_ffi::casper_load_call_stack(
                 &mut call_stack_len as *mut usize,
                 &mut result_size as *mut usize,

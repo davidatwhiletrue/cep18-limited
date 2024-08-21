@@ -11,9 +11,7 @@ use crate::constants::{
     BALANCE_OF_ENTRY_POINT_NAME, BURN_ENTRY_POINT_NAME, CHANGE_EVENTS_MODE_ENTRY_POINT_NAME,
     CHANGE_SECURITY_ENTRY_POINT_NAME, CONDOR, DECIMALS_ENTRY_POINT_NAME,
     DECREASE_ALLOWANCE_ENTRY_POINT_NAME, EVENTS_MODE, INCREASE_ALLOWANCE_ENTRY_POINT_NAME,
-    INIT_ENTRY_POINT_NAME, MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME,
-    MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME, MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME,
-    MINT_ENTRY_POINT_NAME, NAME_ENTRY_POINT_NAME, OWNER, RECIPIENT, SPENDER,
+    INIT_ENTRY_POINT_NAME, MINT_ENTRY_POINT_NAME, NAME_ENTRY_POINT_NAME, OWNER, RECIPIENT, SPENDER,
     SYMBOL_ENTRY_POINT_NAME, TOTAL_SUPPLY_ENTRY_POINT_NAME, TRANSFER_ENTRY_POINT_NAME,
     TRANSFER_FROM_ENTRY_POINT_NAME,
 };
@@ -211,49 +209,7 @@ pub fn mint() -> EntryPoint {
     )
 }
 
-/// Returns the `migrate_user_allowance_keys` entry point.
-pub fn migrate_user_allowance_keys() -> EntryPoint {
-    EntryPoint::new(
-        String::from(MIGRATE_USER_ALLOWANCE_KEYS_ENTRY_POINT_NAME),
-        vec![
-            // Parameter::new(USER_KEY_MAP, BTreeMap::<Key, bool>::cl_type()),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Called,
-        casper_types::EntryPointPayment::Caller,
-    )
-}
-
-/// Returns the `migrate_user_balance_keys` entry point.
-pub fn migrate_user_balance_keys() -> EntryPoint {
-    EntryPoint::new(
-        String::from(MIGRATE_USER_BALANCE_KEYS_ENTRY_POINT_NAME),
-        vec![
-            // Parameter::new(USER_KEY_MAP, BTreeMap::<Key, bool>::cl_type()),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Called,
-        casper_types::EntryPointPayment::Caller,
-    )
-}
-
-/// Returns the `migrate_user_sec_keys` entry point.
-pub fn migrate_user_sec_keys() -> EntryPoint {
-    EntryPoint::new(
-        String::from(MIGRATE_USER_SEC_KEYS_ENTRY_POINT_NAME),
-        vec![
-            // Parameter::new(USER_KEY_MAP, BTreeMap::<Key, bool>::cl_type()),
-        ],
-        CLType::Unit,
-        EntryPointAccess::Public,
-        EntryPointType::Called,
-        casper_types::EntryPointPayment::Caller,
-    )
-}
-
-/// Returns the `migrate_user_sec_keys` entry point.
+/// Returns the `change_events_mode` entry point.
 pub fn change_events_mode() -> EntryPoint {
     EntryPoint::new(
         String::from(CHANGE_EVENTS_MODE_ENTRY_POINT_NAME),
@@ -317,9 +273,6 @@ pub fn generate_entry_points() -> EntryPoints {
     entry_points.add_entry_point(change_security());
     entry_points.add_entry_point(burn());
     entry_points.add_entry_point(mint());
-    entry_points.add_entry_point(migrate_user_allowance_keys());
-    entry_points.add_entry_point(migrate_user_balance_keys());
-    entry_points.add_entry_point(migrate_user_sec_keys());
     entry_points.add_entry_point(change_events_mode());
     entry_points
 }

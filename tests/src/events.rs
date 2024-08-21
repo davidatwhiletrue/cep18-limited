@@ -47,7 +47,7 @@ fn should_have_have_no_events() {
     ));
     assert!(entity_with_named_keys.get("__events").is_none());
     let entity = entity(&builder, &addressable_cep18_token);
-    assert!(entity.message_topics().len() == 0);
+    assert!(entity.message_topics().is_empty());
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn should_have_native_events() {
 
     let exec_result = builder.get_exec_result_owned(3).unwrap();
     let messages = exec_result.messages();
-    let mint_message = "{\"Mint\":{\"recipient\":\"entity-account-2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"amount\":\"1000000\"}}";
+    let mint_message = "{\"recipient\":\"entity-account-2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a\",\"amount\":\"1000000\"}";
     let message = Message::new(
         casper_types::EntityAddr::SmartContract(cep18_token.value()),
         mint_message.into(),
