@@ -2,8 +2,8 @@ import { BigNumber, type BigNumberish } from '@ethersproject/bignumber';
 import { blake2b } from '@noble/hashes/blake2b';
 import {
   CasperServiceByJsonRPC,
-  type CLKeyParameters,
-  type CLPublicKey,
+  type CLKeyVariant,
+  CLPublicKey,
   type CLU256,
   CLValueBuilder,
   CLValueParsers,
@@ -12,7 +12,9 @@ import {
   encodeBase64,
   GetDeployResult,
   type Keys,
-  RuntimeArgs
+  RuntimeArgs,
+  KeyEntityAddr,
+  KeyHashAddr
 } from 'casper-js-sdk';
 
 import { ContractError } from './error';
@@ -27,14 +29,24 @@ import {
   TransferArgs,
   TransferFromArgs
 } from './types';
+import { CLAccountHash } from 'casper-js-sdk';
+import { CLKeyBytesParser } from 'casper-js-sdk';
+import { CLKey } from 'casper-js-sdk';
 
 export default class CEP18Client extends TypedContract {
-  constructor(public nodeAddress: string, public networkName: string) {
+  constructor(
+    public nodeAddress: string,
+    public networkName: string
+  ) {
     super(nodeAddress, networkName);
   }
 
+  public setContractName(name: string) {
+    this.contractClient.setContractName(name);
+  }
+
   public setContractHash(
-    contractHash: `hash-${string}`,
+    contractHash: `entity-contract-${string}`,
     contractPackageHash?: `hash-${string}`
   ) {
     this.contractClient.setContractHash(contractHash, contractPackageHash);
@@ -117,8 +129,9 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    let recipientKey = new CLKey(args.recipient.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      recipient: CLValueBuilder.key(args.recipient),
+      recipient: recipientKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
@@ -148,9 +161,11 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    let ownerKey = new CLKey(args.owner.toAccountHash());
+    let recipientKey = new CLKey(args.recipient.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      owner: CLValueBuilder.key(args.owner),
-      recipient: CLValueBuilder.key(args.recipient),
+      owner: ownerKey,
+      recipient: recipientKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
@@ -180,8 +195,9 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    const spenderKey = new CLKey(args.spender.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      spender: CLValueBuilder.key(args.spender),
+      spender: spenderKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
@@ -211,13 +227,47 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    const spenderKey = new CLKey(args.spender.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      spender: CLValueBuilder.key(args.spender),
+      spender: spenderKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
     return this.contractClient.callEntrypoint(
       'increase_allowance',
+      runtimeArgs,
+      sender,
+      networkName ?? this.networkName,
+      BigNumber.from(paymentAmount).toString(),
+      signingKeys
+    );
+  }
+
+  /**
+   * Fetches allowance from owner to spender
+   * @param args @see {@link ApproveArgs}
+   * @param paymentAmount payment amount required for installing the contract
+   * @param sender deploy sender
+   * @param networkName network name which will be deployed to
+   * @param signingKeys array of signing keys optional, returns signed deploy if keys are provided
+   * @returns Deploy object which can be send to the node.
+   */
+  public allowance(
+    spender: CLPublicKey,
+    owner: CLKeyVariant,
+    sender: CLPublicKey,
+    paymentAmount: BigNumberish,
+    networkName?: string,
+    signingKeys?: Keys.AsymmetricKey[]
+  ): DeployUtil.Deploy {
+    const spenderKey = new CLKey(spender.toAccountHash());
+    const runtimeArgs = RuntimeArgs.fromMap({
+      spender: spenderKey,
+      owner: CLValueBuilder.key(owner)
+    });
+
+    return this.contractClient.callEntrypoint(
+      'allowance',
       runtimeArgs,
       sender,
       networkName ?? this.networkName,
@@ -242,8 +292,9 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    const spenderKey = new CLKey(args.spender.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      spender: CLValueBuilder.key(args.spender),
+      spender: spenderKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
@@ -274,8 +325,9 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    const ownerKey = new CLKey(args.owner.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      owner: CLValueBuilder.key(args.owner),
+      owner: ownerKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
@@ -305,8 +357,9 @@ export default class CEP18Client extends TypedContract {
     networkName?: string,
     signingKeys?: Keys.AsymmetricKey[]
   ): DeployUtil.Deploy {
+    const ownerKey = new CLKey(args.owner.toAccountHash());
     const runtimeArgs = RuntimeArgs.fromMap({
-      owner: CLValueBuilder.key(args.owner),
+      owner: ownerKey,
       amount: CLValueBuilder.u256(args.amount)
     });
 
@@ -342,31 +395,41 @@ export default class CEP18Client extends TypedContract {
     if (args.adminList) {
       runtimeArgs.insert(
         'admin_list',
-        CLValueBuilder.list(args.adminList.map(CLValueBuilder.key))
+        CLValueBuilder.list(
+          args.adminList.map(pubKey => new CLKey(pubKey.toAccountHash()))
+        )
       );
     }
     if (args.minterList) {
       runtimeArgs.insert(
         'minter_list',
-        CLValueBuilder.list(args.minterList.map(CLValueBuilder.key))
+        CLValueBuilder.list(
+          args.minterList.map(pubKey => new CLKey(pubKey.toAccountHash()))
+        )
       );
     }
     if (args.burnerList) {
       runtimeArgs.insert(
         'burner_list',
-        CLValueBuilder.list(args.burnerList.map(CLValueBuilder.key))
+        CLValueBuilder.list(
+          args.burnerList.map(pubKey => new CLKey(pubKey.toAccountHash()))
+        )
       );
     }
     if (args.mintAndBurnList) {
       runtimeArgs.insert(
         'mint_and_burn_list',
-        CLValueBuilder.list(args.mintAndBurnList.map(CLValueBuilder.key))
+        CLValueBuilder.list(
+          args.mintAndBurnList.map(pubKey => new CLKey(pubKey.toAccountHash()))
+        )
       );
     }
     if (args.noneList) {
       runtimeArgs.insert(
         'none_list',
-        CLValueBuilder.list(args.noneList.map(CLValueBuilder.key))
+        CLValueBuilder.list(
+          args.noneList.map(pubKey => new CLKey(pubKey.toAccountHash()))
+        )
       );
     }
 
@@ -390,11 +453,11 @@ export default class CEP18Client extends TypedContract {
    * @param account account info to get balance
    * @returns account's balance
    */
-  public async balanceOf(account: CLKeyParameters): Promise<BigNumber> {
-    const keyBytes = CLValueParsers.toBytes(
-      CLValueBuilder.key(account)
-    ).unwrap();
-    const dictKey = encodeBase64(keyBytes);
+  public async balanceOf(account: CLPublicKey): Promise<BigNumber> {
+    const clKey = new CLKey(account.toAccountHash());
+    const dictKey = encodeBase64(
+      new CLKeyBytesParser().toBytes(clKey).unwrap()
+    );
     let balance = BigNumber.from(0);
     try {
       balance = (
@@ -421,32 +484,28 @@ export default class CEP18Client extends TypedContract {
    * @returns approved amount
    */
   public async allowances(
-    owner: CLKeyParameters,
-    spender: CLKeyParameters
+    owner: CLPublicKey,
+    spender: CLPublicKey
   ): Promise<BigNumber> {
-    const keyOwner = CLValueParsers.toBytes(CLValueBuilder.key(owner)).unwrap();
-    const keySpender = CLValueParsers.toBytes(
-      CLValueBuilder.key(spender)
-    ).unwrap();
+    //#TODO make assembling keys simpler
+    let keyOwner = toAccountKeyBytes(owner);
+    let keySpender = toAccountKeyBytes(spender);
 
     const finalBytes = new Uint8Array(keyOwner.length + keySpender.length);
     finalBytes.set(keyOwner);
     finalBytes.set(keySpender, keyOwner.length);
-
     const blaked = blake2b(finalBytes, {
       dkLen: 32
     });
     const dictKey = encodeBase16(blaked);
 
     let allowances = BigNumber.from(0);
-
     try {
-      allowances = (
-        (await this.contractClient.queryContractDictionary(
-          'allowances',
-          dictKey
-        )) as CLU256
-      ).value();
+      let allowancesRet = await this.contractClient.queryContractDictionary(
+        'allowances',
+        dictKey
+      );
+      allowances = (allowancesRet as CLU256).value();
     } catch (error) {
       if (
         error instanceof Error &&
@@ -455,6 +514,7 @@ export default class CEP18Client extends TypedContract {
         console.warn(`Not found allowances for ${encodeBase16(owner.data)}`);
       } else throw error;
     }
+
     return allowances;
   }
 
@@ -523,11 +583,13 @@ export default class CEP18Client extends TypedContract {
 
     const result = await casperClient.getDeployInfo(deployHash);
     if (
-      result.execution_results.length > 0 &&
-      result.execution_results[0].result.Failure
+      result.execution_info &&
+      result.execution_info.execution_result &&
+      'Version2' in result.execution_info.execution_result &&
+      result.execution_info.execution_result.Version2.error_message
     ) {
       // Parse execution result
-      const { error_message } = result.execution_results[0].result.Failure;
+      const { error_message } = result.execution_info.execution_result.Version2;
       const contractErrorMessagePrefix = 'User error: ';
       if (error_message.startsWith(contractErrorMessagePrefix)) {
         const errorCode = parseInt(
@@ -542,4 +604,9 @@ export default class CEP18Client extends TypedContract {
     }
     return result;
   }
+}
+
+export function toAccountKeyBytes(pubKey: CLPublicKey): Uint8Array {
+  const clKey = new CLKey(pubKey.toAccountHash());
+  return new CLKeyBytesParser().toBytes(clKey).unwrap();
 }

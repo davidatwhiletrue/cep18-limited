@@ -17,6 +17,7 @@ import INSTALL_ARGS_JSON from './json/install-args.json';
 import MINT_ARGS_JSON from './json/mint-args.json';
 import TRANSFER_ARGS_JSON from './json/transfer-args.json';
 import TRANSFER_FROM_ARGS_JSON from './json/transfer-from-args.json';
+import { CLKey } from 'casper-js-sdk';
 
 describe('CEP18Client', () => {
   const cep18 = new CEP18Client(NODE_URL, NETWORK_NAME);
@@ -34,10 +35,10 @@ describe('CEP18Client', () => {
 
   let spies: jest.SpyInstance[] = [];
 
-  const doApprove = (spender: CLPublicKey, amount: BigNumberish) => {
+  const doApprove = (spenderPubkey: CLPublicKey, amount: BigNumberish) => {
     const deploy = cep18.approve(
       {
-        spender,
+        spender: spenderPubkey,
         amount
       },
       5_000_000_000,
@@ -67,7 +68,7 @@ describe('CEP18Client', () => {
     );
     const { deploy: JsonDeploy } = DeployUtil.deployToJson(deploy);
     cep18.setContractHash(
-      'hash-6797fc45c106bd1f4c9f00cb416d63fd71fecfb90ba8f9c24e597b678569d095'
+      'entity-contract-6797fc45c106bd1f4c9f00cb416d63fd71fecfb90ba8f9c24e597b678569d095'
     );
 
     const mockedFns = {
@@ -103,8 +104,8 @@ describe('CEP18Client', () => {
 
     expect(name).toBe(tokenInfo.name);
     expect(symbol).toBe(tokenInfo.symbol);
-    expect(decimals.eq(tokenInfo.decimals));
-    expect(totalSupply.eq(tokenInfo.totalSupply));
+    expect(decimals.toNumber()).toEqual(tokenInfo.decimals);
+    expect(totalSupply.toNumber()).toEqual(tokenInfo.totalSupply);
   });
 
   it('should construct approve args properly', () => {
