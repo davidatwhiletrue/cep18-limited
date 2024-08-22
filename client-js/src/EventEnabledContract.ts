@@ -44,7 +44,6 @@ export default class EventEnabledContract {
     this.eventStream = eventStream;
 
     if (!this.parser) {
-      console.error(`ZZZ1 ${this.contractClient.contractHash}`);
       let contractHash = this.contractClient.contractHash.replace(
         'entity-contract-',
         ''
@@ -143,7 +142,7 @@ function isSuccessfull(executionResult: ExecutionResult): boolean {
     return !!typedExecutionResult.Success;
   } else if ('Version2' in executionResult) {
     let typedExecutionResult = executionResult.Version2 as ExecutionResultV2;
-    return !!typedExecutionResult.error_message;
+    return !typedExecutionResult.error_message;
   }
   throw new Error('Unknown execution result version');
 }

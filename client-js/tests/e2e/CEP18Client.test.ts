@@ -71,9 +71,8 @@ describe('CEP18Client', () => {
     if (!result || !client.isDeploySuccessfull(result)) {
       fail('Transfer deploy failed');
     }
-    const events = cep18.parseExecutionResult(
-      result.execution_info!.execution_result!
-    );
+    let execution_result = result.execution_info!.execution_result!;
+    const events = cep18.parseExecutionResult(execution_result);
     expect(events.length).toEqual(1);
     expect(events[0].name).toEqual('SetAllowance');
     await sleep(5000);
@@ -148,7 +147,7 @@ describe('CEP18Client', () => {
       expect(symbol).toBe(tokenInfo.symbol);
       expect(decimals.toNumber()).toEqual(tokenInfo.decimals);
       expect(totalSupply.toNumber()).toEqual(tokenInfo.totalSupply);
-      expect(await cep18.eventsMode()).toEqual('Native');
+      expect(await cep18.eventsMode()).toEqual('CES');
       expect(isMintAndBurnEnabled).toEqual(true);
     });
 
@@ -202,7 +201,7 @@ describe('CEP18Client', () => {
       ).rejects.toThrowError('InsufficientBalance');
     });
 
-    it.only('should transfer tokens', async () => {
+    it('should transfer tokens', async () => {
       const amount = 50;
       await doApprove(cep18, user3.publicKey, amount);
 
