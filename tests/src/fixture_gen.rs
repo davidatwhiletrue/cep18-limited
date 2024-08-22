@@ -1,23 +1,61 @@
 use casper_engine_test_support::utils::create_run_genesis_request;
 use casper_engine_test_support::{
-    ExecuteRequestBuilder, LmdbWasmTestBuilder, DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_PUBLIC_KEY,
+    ExecuteRequestBuilder, LmdbWasmTestBuilder, UpgradeRequestBuilder, DEFAULT_ACCOUNT_ADDR,
+    DEFAULT_ACCOUNT_PUBLIC_KEY,
 };
-use casper_fixtures::generate_fixture;
+use casper_fixtures::{builder_from_global_state_fixture, generate_fixture, shrink_db};
 use casper_types::addressable_entity::EntityKindTag;
 use casper_types::bytesrepr::FromBytes;
-use casper_types::{runtime_args, RuntimeArgs, U256};
+use casper_types::{runtime_args, EraId, RuntimeArgs, U256};
 use casper_types::{
     AddressableEntityHash, CLTyped, EntityAddr, GenesisAccount, Motes, PackageHash, U512,
 };
 
 use casper_types::{account::AccountHash, Key, PublicKey, SecretKey};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use utility::constants::{
     AMOUNT, ARG_ADDRESS, ARG_AMOUNT, ARG_DECIMALS, ARG_NAME, ARG_OWNER, ARG_SYMBOL,
     ARG_TOKEN_CONTRACT, ARG_TOTAL_SUPPLY, CEP18_CONTRACT_WASM, CEP18_TEST_CONTRACT_KEY,
     CEP18_TEST_CONTRACT_WASM, CEP18_TOKEN_CONTRACT_KEY, CHECK_BALANCE_OF_ENTRYPOINT, OWNER,
     RESULT_KEY, TOKEN_DECIMALS, TOKEN_NAME, TOKEN_SYMBOL, TOKEN_TOTAL_SUPPLY,
 };
+
+use std::{
+    fs::File,
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+use casper_types::{Digest, ProtocolVersion};
+
+const STATE_JSON_FILE: &str = "state.json";
+const GENESIS_PROTOCOL_VERSION_FIELD: &str = "protocol_version";
+
+fn path_to_lmdb_fixtures() -> PathBuf {
+    Path::new("./fixtures/").to_path_buf()
+}
+
+/// Contains serialized genesis config.
+#[derive(Serialize, Deserialize)]
+pub struct LmdbFixtureState {
+    /// Serializes as unstructured JSON value because [`GenesisRequest`] might change over time
+    /// and likely old fixture might not deserialize cleanly in the future.
+    pub genesis_request: serde_json::Value,
+    pub post_state_hash: Digest,
+}
+
+impl LmdbFixtureState {
+    pub fn genesis_protocol_version(&self) -> ProtocolVersion {
+        serde_json::from_value(
+            self.genesis_request
+                .get(GENESIS_PROTOCOL_VERSION_FIELD)
+                .cloned()
+                .unwrap(),
+        )
+        .expect("should have protocol version field")
+    }
+}
 
 #[allow(unused)]
 mod utility;
@@ -107,7 +145,7 @@ pub(crate) fn cep18_check_balance_of(
     get_test_result(builder, cep18_test_contract_package)
 }
 
-fn main() {
+fn generate_current_fixture() {
     let genesis_request = create_run_genesis_request(vec![
         GenesisAccount::Account {
             public_key: DEFAULT_ACCOUNT_PUBLIC_KEY.clone(),
@@ -180,7 +218,7 @@ fn main() {
             cep18_check_balance_of(
                 builder,
                 &cep18_contract_hash,
-                Key::AddressableEntity(casper_types::EntityAddr::Account(DEFAULT_ACCOUNT_ADDR.value()))
+                Key::Account(*DEFAULT_ACCOUNT_ADDR)
             ),
             U256::from(TOKEN_TOTAL_SUPPLY),
         );
@@ -215,4 +253,68 @@ fn main() {
             U256::from(TOKEN_OWNER_AMOUNT_2)
         );
     }).unwrap();
+}
+
+fn generate_cross_generational_fixture() -> Result<(), Box<dyn std::error::Error>> {
+    let (mut builder, lmdb_fixture_state, _temp_dir) =
+        builder_from_global_state_fixture("cep18-1.5.6-minted");
+
+    let lmdb_fixtures_root = path_to_lmdb_fixtures();
+    let fixture_root = lmdb_fixtures_root.join("cross_generation");
+
+    let path_to_data_lmdb = fixture_root.join("global_state").join("data.lmdb");
+    if path_to_data_lmdb.exists() {
+        eprintln!(
+            "Lmdb fixture located at {} already exists. If you need to re-generate a fixture to ensure a serialization \
+            changes are backwards compatible please make sure you are running a specific version, or a past commit. \
+            Skipping.",
+            path_to_data_lmdb.display()
+        );
+        return Ok(());
+    }
+
+    assert_eq!(
+        builder.get_post_state_hash(),
+        lmdb_fixture_state.post_state_hash
+    );
+
+    // we upgrade the execution engines protocol from 1.x to 2.x
+    let mut upgrade_config = UpgradeRequestBuilder::new()
+        .with_current_protocol_version(lmdb_fixture_state.genesis_protocol_version())
+        .with_new_protocol_version(ProtocolVersion::V2_0_0)
+        .with_migrate_legacy_accounts(true)
+        .with_migrate_legacy_contracts(true)
+        .with_activation_point(EraId::new(1))
+        .build();
+
+    builder
+        .upgrade(&mut upgrade_config)
+        .expect_upgrade_success()
+        .commit();
+
+    // the state hash should now be different
+    assert_ne!(
+        builder.get_post_state_hash(),
+        lmdb_fixture_state.post_state_hash
+    );
+
+    let post_state_hash = builder.get_post_state_hash();
+
+    let state = LmdbFixtureState {
+        genesis_request: lmdb_fixture_state.genesis_request,
+        post_state_hash,
+    };
+    let serialized_state = serde_json::to_string_pretty(&state)?;
+
+    let path_to_state_file = fixture_root.join(STATE_JSON_FILE);
+
+    let mut f = File::create(path_to_state_file)?;
+    f.write_all(serialized_state.as_bytes())?;
+    shrink_db(path_to_data_lmdb);
+    Ok(())
+}
+
+fn main() {
+    generate_current_fixture();
+    let _ = generate_cross_generational_fixture();
 }
