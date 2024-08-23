@@ -39,7 +39,8 @@
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",
     "@make-software/ces-js-parser": "github:zajko/ces-js-parser#feat-2.0",
-    "@noble/hashes": "^1.2.0"
+    "@noble/hashes": "^1.2.0",
+    "casper-js-sdk": "^3.0.0-rc04"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",

@@ -1,5 +1,4 @@
 import {
-  AddressableEntity,
   AddressableEntityWrapper,
   CasperServiceByJsonRPC,
   NamedKey,
@@ -8,7 +7,6 @@ import {
   type StoredValue
 } from 'casper-js-sdk';
 
-type Defined<Value> = Exclude<Value, null | undefined>;
 type Account = {
   addressableEntity: AddressableEntityWrapper;
   namedKeys: NamedKey[];

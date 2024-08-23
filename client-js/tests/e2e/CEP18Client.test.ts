@@ -4,6 +4,7 @@ import { type BigNumberish } from '@ethersproject/bignumber';
 import {
   CasperServiceByJsonRPC,
   type CLPublicKey,
+  DeployUtil,
   EventStream
 } from 'casper-js-sdk';
 
@@ -26,7 +27,6 @@ import { encodeBase16 } from 'casper-js-sdk';
 import { BigNumber } from '@ethersproject/bignumber';
 import { SetAllowance } from '../../src/events';
 import { AsymmetricKey } from 'casper-js-sdk/dist/lib/Keys';
-import { CLKey } from 'casper-js-sdk';
 
 describe('CEP18Client', () => {
   let testNumber = 1;
@@ -113,7 +113,7 @@ describe('CEP18Client', () => {
     const contractHash = findKeyFromAccountNamedKeys(
       accountInfo,
       `cep18_contract_hash_${tokenInfo.name}`
-    ) as `entity-contract-${string}`;
+    );
     cep18.setContractHash(contractHash);
 
     await cep18.setupEventStream(eventStream);
@@ -136,6 +136,7 @@ describe('CEP18Client', () => {
       const contracHash = cep18.contractHash;
       expect(contracHash).toBeDefined();
     });
+
     it('should match on-chain info with install info', async () => {
       const name = await cep18.name();
       const symbol = await cep18.symbol();
@@ -252,6 +253,61 @@ describe('CEP18Client', () => {
 
       expect(balance.toNumber()).toEqual(transferAmount);
 
+      const allowances = await cep18.allowances(
+        owner.publicKey,
+        user1.publicKey
+      );
+
+      expect(allowances).toEqual(BigNumber.from(amount).sub(transferAmount));
+    });
+
+    it('should increaseAllowance', async () => {
+      const amount = 200;
+      await doApprove(cep18, user1.publicKey, amount);
+      const transferAmount = 100;
+      const deploy = cep18.increaseAllowance(
+        {
+          spender: user1.publicKey,
+          amount: transferAmount
+        },
+        5_000_000_000,
+        owner.publicKey,
+        NETWORK_NAME,
+        [owner]
+      );
+      await deploy.send(NODE_URL);
+      const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
+      if (!result || !client.isDeploySuccessfull(result)) {
+        fail('Transfer deploy failed');
+      }
+      const allowances = await cep18.allowances(
+        owner.publicKey,
+        user1.publicKey
+      );
+
+      expect(allowances).toEqual(BigNumber.from(amount).add(transferAmount));
+    });
+
+    it('should decreaseAllowance', async () => {
+      const amount = 200;
+      await doApprove(cep18, user1.publicKey, amount);
+      const transferAmount = 100;
+      const deploy = cep18.decreaseAllowance(
+        {
+          spender: user1.publicKey,
+          amount: transferAmount
+        },
+        5_000_000_000,
+        owner.publicKey,
+        NETWORK_NAME,
+        [owner]
+      );
+
+      await deploy.send(NODE_URL);
+      const result = await client.waitForDeploy(deploy, DEPLOY_TIMEOUT);
+      if (!result || !client.isDeploySuccessfull(result)) {
+        fail('Transfer deploy failed');
+      }
       const allowances = await cep18.allowances(
         owner.publicKey,
         user1.publicKey

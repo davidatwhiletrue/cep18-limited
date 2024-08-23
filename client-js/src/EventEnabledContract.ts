@@ -44,10 +44,7 @@ export default class EventEnabledContract {
     this.eventStream = eventStream;
 
     if (!this.parser) {
-      let contractHash = this.contractClient.contractHash.replace(
-        'entity-contract-',
-        ''
-      );
+      let contractHash = this.getContractHashWithoutPrefix();
       this.parser = await Parser.create(this.casperClient.nodeClient, [
         contractHash
       ]);
@@ -125,14 +122,35 @@ export default class EventEnabledContract {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const results = this.parser.parseExecutionResult(result);
+    const isLegacy = this.isLegacy();
+    const contractHashPrefix = isLegacy ? 'hash-' : 'entity-contract-';
+    const contractPackageHashPrefix = isLegacy ? 'hash-' : 'entity-contract-';
 
     return results
       .filter(r => r.error === null)
       .map(r => ({
         ...r.event,
-        contractHash: `hash-${encodeBase16(r.event.contractHash)}`,
-        contractPackageHash: `hash-${encodeBase16(r.event.contractPackageHash)}`
+        contractHash: `${contractHashPrefix}${encodeBase16(r.event.contractHash)}`,
+        contractPackageHash: `${contractPackageHashPrefix}${encodeBase16(r.event.contractPackageHash)}`
       })) as CEP18Event[];
+  }
+
+  public isLegacy(): boolean {
+    if (!this.contractClient.contractHash) {
+      return undefined; //
+    }
+    return this.contractClient.contractHash.startsWith('hash-');
+  }
+
+  public getContractHashWithoutPrefix(): string {
+    if (!this.contractClient.contractHash) {
+      return undefined; //
+    }
+    if (this.isLegacy()) {
+      return this.contractClient.contractHash.replace('hash-', '');
+    } else {
+      return this.contractClient.contractHash.replace('entity-contract-', '');
+    }
   }
 }
 

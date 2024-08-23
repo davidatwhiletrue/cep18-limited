@@ -17,7 +17,6 @@ import INSTALL_ARGS_JSON from './json/install-args.json';
 import MINT_ARGS_JSON from './json/mint-args.json';
 import TRANSFER_ARGS_JSON from './json/transfer-args.json';
 import TRANSFER_FROM_ARGS_JSON from './json/transfer-from-args.json';
-import { CLKey } from 'casper-js-sdk';
 
 describe('CEP18Client', () => {
   const cep18 = new CEP18Client(NODE_URL, NETWORK_NAME);
