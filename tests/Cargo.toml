@@ -12,6 +12,7 @@ once_cell = "1.16.0"
 casper-fixtures = { git = "https://github.com/deuszex/casper-fixtures", branch = "feat-2.0"}
 serde = { version = "1.0.80", default-features = false }
 serde_json = { version = "1.0.59", default-features = false }
+fs_extra = "*"
 
 [lib]
 name = "tests"
