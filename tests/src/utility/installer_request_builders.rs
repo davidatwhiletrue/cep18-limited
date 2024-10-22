@@ -279,21 +279,20 @@ pub(crate) fn test_cep18_transfer(
 
     builder
         .exec(token_transfer_request_2)
-        .expect_success()
+        .expect_failure()
         .commit();
 
     let sender_balance_after = cep18_check_balance_of(builder, cep18_token, sender1);
     assert_eq!(sender_balance_after, sender_balance_before);
 
     let account_1_balance_after = cep18_check_balance_of(builder, cep18_token, recipient1);
-    assert!(account_1_balance_after < account_1_balance_before);
     assert_eq!(
         account_1_balance_after,
-        transfer_amount_1 - transfer_amount_2
+        account_1_balance_before
     );
 
     let account_2_balance_after = cep18_check_balance_of(builder, cep18_token, recipient2);
-    assert_eq!(account_2_balance_after, transfer_amount_2);
+    assert_eq!(account_2_balance_after, U256::zero());
 }
 
 pub(crate) fn make_cep18_transfer_request(

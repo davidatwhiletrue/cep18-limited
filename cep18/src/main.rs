@@ -148,6 +148,9 @@ pub extern "C" fn increase_allowance() {
 
 #[no_mangle]
 pub extern "C" fn transfer() {
+
+    sec_check(vec![SecurityBadge::Admin]);
+
     let sender = utils::get_immediate_caller_address().unwrap_or_revert();
     let recipient: Key = runtime::get_named_arg(RECIPIENT);
     if sender == recipient {
@@ -165,6 +168,9 @@ pub extern "C" fn transfer() {
 
 #[no_mangle]
 pub extern "C" fn transfer_from() {
+
+    sec_check(vec![SecurityBadge::Admin]);
+
     let spender = utils::get_immediate_caller_address().unwrap_or_revert();
     let recipient: Key = runtime::get_named_arg(RECIPIENT);
     let owner: Key = runtime::get_named_arg(OWNER);
@@ -323,9 +329,6 @@ pub extern "C" fn init() {
 /// Beware: do not remove the last Admin because that will lock out all admin functionality.
 #[no_mangle]
 pub extern "C" fn change_security() {
-    if 0 == read_from::<u8>(ENABLE_MINT_BURN) {
-        revert(Cep18Error::MintBurnDisabled);
-    }
     sec_check(vec![SecurityBadge::Admin]);
     let admin_list: Option<Vec<Key>> =
         utils::get_optional_named_arg_with_user_errors(ADMIN_LIST, Cep18Error::InvalidAdminList);

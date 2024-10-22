@@ -183,21 +183,21 @@ fn should_transfer_from_from_account_to_account() {
 
     builder
         .exec(transfer_from_request_1)
-        .expect_success()
+        .expect_failure()
         .commit();
 
     let account_1_allowance_after =
         cep18_check_allowance_of(&mut builder, Key::Account(owner), Key::Account(spender));
     assert_eq!(
         account_1_allowance_after,
-        account_1_allowance_before - transfer_from_amount_1
+        account_1_allowance_before
     );
 
     let account_1_balance_after =
         cep18_check_balance_of(&mut builder, &cep18_token, Key::Account(owner));
     assert_eq!(
         account_1_balance_after,
-        account_1_balance_before - transfer_from_amount_1
+        account_1_balance_before
     );
 }
 
@@ -266,21 +266,21 @@ fn should_transfer_from_account_by_contract() {
 
     builder
         .exec(transfer_from_request_1)
-        .expect_success()
+        .expect_failure()
         .commit();
 
     let spender_allowance_after =
         cep18_check_allowance_of(&mut builder, Key::Account(owner), spender);
     assert_eq!(
         spender_allowance_after,
-        spender_allowance_before - transfer_from_amount_1
+        spender_allowance_before
     );
 
     let owner_balance_after =
         cep18_check_balance_of(&mut builder, &cep18_token, Key::Account(owner));
     assert_eq!(
         owner_balance_after,
-        owner_balance_before - transfer_from_amount_1
+        owner_balance_before
     );
 }
 
