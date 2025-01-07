@@ -1,5 +1,5 @@
 use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR};
-use casper_types::{runtime_args, ApiError, Key, RuntimeArgs, U256};
+use casper_types::{runtime_args, AddressableEntityHash, ApiError, EntityAddr, Key, PackageHash, RuntimeArgs, U256};
 
 use crate::utility::{
     constants::{
@@ -14,9 +14,7 @@ use crate::utility::{
     },
 };
 
-use casper_execution_engine::core::{
-    engine_state::Error as CoreError, execution::Error as ExecError,
-};
+use casper_execution_engine::{engine_state::Error as CoreError, execution::ExecError};
 
 #[test]
 fn should_transfer_full_owned_amount() {
@@ -44,7 +42,7 @@ fn should_transfer_full_owned_amount() {
 
     let token_transfer_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         transfer_1_sender,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_TRANSFER,
         cep18_transfer_1_args,
     )
@@ -66,7 +64,9 @@ fn should_transfer_full_owned_amount() {
     );
     assert_eq!(owner_balance_after, U256::zero());
 
-    let total_supply: U256 = builder.get_value(cep18_token, TOTAL_SUPPLY_KEY);
+    let total_supply: U256 = builder.get_value(
+        EntityAddr::new_smart_contract(cep18_token.value()),
+        TOTAL_SUPPLY_KEY);
     assert_eq!(total_supply, initial_supply);
 }
 
@@ -99,7 +99,7 @@ fn should_not_transfer_more_than_owned_balance() {
 
     let token_transfer_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         transfer_1_sender,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_TRANSFER,
         cep18_transfer_1_args,
     )
@@ -125,7 +125,9 @@ fn should_not_transfer_more_than_owned_balance() {
         cep18_check_balance_of(&mut builder, &cep18_token, Key::Account(transfer_1_sender));
     assert_eq!(owner_balance_after, initial_supply);
 
-    let total_supply: U256 = builder.get_value(cep18_token, TOTAL_SUPPLY_KEY);
+    let total_supply: U256 = builder.get_value(
+        EntityAddr::new_smart_contract(cep18_token.value()),
+        TOTAL_SUPPLY_KEY);
     assert_eq!(total_supply, initial_supply);
 }
 
@@ -157,7 +159,7 @@ fn should_transfer_from_from_account_to_account() {
 
     let approve_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         owner,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_APPROVE,
         cep18_approve_args,
     )
@@ -165,7 +167,7 @@ fn should_transfer_from_from_account_to_account() {
 
     let transfer_from_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         spender,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_TRANSFER_FROM,
         cep18_transfer_from_args,
     )
@@ -239,7 +241,7 @@ fn should_transfer_from_account_by_contract() {
 
     let approve_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         owner,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_APPROVE,
         cep18_approve_args,
     )
@@ -247,7 +249,7 @@ fn should_transfer_from_account_by_contract() {
 
     let transfer_from_request_1 = ExecuteRequestBuilder::versioned_contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
-        cep18_test_contract_package,
+        PackageHash::new(cep18_test_contract_package.value()),
         None,
         METHOD_FROM_AS_STORED_CONTRACT,
         cep18_transfer_from_args,
@@ -348,7 +350,7 @@ fn should_not_be_able_to_own_transfer_from() {
         };
         ExecuteRequestBuilder::contract_call_by_hash(
             sender.into_account().unwrap(),
-            cep18_token,
+            AddressableEntityHash::new(cep18_token.value()),
             METHOD_TRANSFER_FROM,
             cep18_transfer_from_args,
         )
@@ -421,7 +423,7 @@ fn should_verify_zero_amount_transfer_from_is_noop() {
         };
         ExecuteRequestBuilder::contract_call_by_hash(
             owner.into_account().unwrap(),
-            cep18_token,
+            AddressableEntityHash::new(cep18_token.value()),
             METHOD_TRANSFER_FROM,
             cep18_transfer_from_args,
         )

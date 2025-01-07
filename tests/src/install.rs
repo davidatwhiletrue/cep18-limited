@@ -1,5 +1,5 @@
 use casper_engine_test_support::DEFAULT_ACCOUNT_ADDR;
-use casper_types::{Key, U256};
+use casper_types::{EntityAddr, Key, U256};
 
 use crate::utility::{
     constants::{
@@ -15,16 +15,24 @@ use crate::utility::{
 fn should_have_queryable_properties() {
     let (mut builder, TestContext { cep18_token, .. }) = setup();
 
-    let name: String = builder.get_value(cep18_token, NAME_KEY);
+    let name: String = builder.get_value(
+        EntityAddr::new_smart_contract(cep18_token.value()),
+        NAME_KEY);
     assert_eq!(name, TOKEN_NAME);
 
-    let symbol: String = builder.get_value(cep18_token, SYMBOL_KEY);
+    let symbol: String = builder.get_value(
+        EntityAddr::new_smart_contract(cep18_token.value()),
+        SYMBOL_KEY);
     assert_eq!(symbol, TOKEN_SYMBOL);
 
-    let decimals: u8 = builder.get_value(cep18_token, DECIMALS_KEY);
+    let decimals: u8 = builder.get_value(
+        EntityAddr::new_smart_contract(cep18_token.value()),
+        DECIMALS_KEY);
     assert_eq!(decimals, TOKEN_DECIMALS);
 
-    let total_supply: U256 = builder.get_value(cep18_token, TOTAL_SUPPLY_KEY);
+    let total_supply: U256 = builder.get_value(
+        EntityAddr::new_smart_contract(cep18_token.value()),
+        TOTAL_SUPPLY_KEY);
     assert_eq!(total_supply, U256::from(TOKEN_TOTAL_SUPPLY));
 
     let owner_key = Key::Account(*DEFAULT_ACCOUNT_ADDR);
@@ -53,6 +61,6 @@ fn should_not_store_balances_or_allowances_under_account_after_install() {
         .expect("should have account");
 
     let named_keys = account.named_keys();
-    assert!(!named_keys.contains_key(BALANCES_KEY), "{:?}", named_keys);
-    assert!(!named_keys.contains_key(ALLOWANCES_KEY), "{:?}", named_keys);
+    assert!(!named_keys.contains(BALANCES_KEY), "{:?}", named_keys);
+    assert!(!named_keys.contains(ALLOWANCES_KEY), "{:?}", named_keys);
 }

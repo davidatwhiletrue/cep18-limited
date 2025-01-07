@@ -1,24 +1,33 @@
 use core::convert::TryFrom;
 
 use alloc::collections::BTreeMap;
-use casper_contract::unwrap_or_revert::UnwrapOrRevert;
-use casper_types::{Key, U256};
+use alloc::vec;
+use alloc::vec::Vec;
+use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
+use casper_types::{bytesrepr::Bytes, contract_messages::MessagePayload, Key, U256};
 
 use crate::{
-    constants::EVENTS_MODE,
+    constants::{EVENTS, EVENTS_MODE},
     modalities::EventsMode,
     utils::{read_from, SecurityBadge},
+    Cep18Error,
 };
 
 use casper_event_standard::{emit, Event, Schemas};
+use casper_types::bytesrepr::ToBytes;
 
 pub fn record_event_dictionary(event: Event) {
-    let events_mode: EventsMode =
-        EventsMode::try_from(read_from::<u8>(EVENTS_MODE)).unwrap_or_revert();
+    let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
+        .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
     match events_mode {
         EventsMode::NoEvents => {}
         EventsMode::CES => ces(event),
+        EventsMode::Native => {
+            let dummy: Vec<u8> = vec![0x01, 0x02, 0x03, 0x04];
+            let payload = MessagePayload::Bytes(dummy.into());
+            runtime::emit_message(EVENTS, &payload).unwrap_or_revert()
+        }
     }
 }
 
@@ -31,6 +40,7 @@ pub enum Event {
     Transfer(Transfer),
     TransferFrom(TransferFrom),
     ChangeSecurity(ChangeSecurity),
+    ChangeEventsMode(ChangeEventsMode),
 }
 
 #[derive(Event, Debug, PartialEq, Eq)]
@@ -88,6 +98,10 @@ pub struct ChangeSecurity {
     pub admin: Key,
     pub sec_change_map: BTreeMap<Key, SecurityBadge>,
 }
+#[derive(Event, Debug, PartialEq, Eq)]
+pub struct ChangeEventsMode {
+    pub events_mode: u8,
+}
 
 fn ces(event: Event) {
     match event {
@@ -99,14 +113,17 @@ fn ces(event: Event) {
         Event::Transfer(ev) => emit(ev),
         Event::TransferFrom(ev) => emit(ev),
         Event::ChangeSecurity(ev) => emit(ev),
+        Event::ChangeEventsMode(ev) => emit(ev),
     }
 }
 
 pub fn init_events() {
-    let events_mode: EventsMode =
-        EventsMode::try_from(read_from::<u8>(EVENTS_MODE)).unwrap_or_revert();
+    let events_mode: EventsMode = EventsMode::try_from(read_from::<u8>(EVENTS_MODE))
+        .unwrap_or_revert_with(Cep18Error::InvalidEventsMode);
 
-    if events_mode == EventsMode::CES {
+    if EventsMode::CES == events_mode
+        && runtime::get_key(casper_event_standard::EVENTS_DICT).is_none()
+    {
         let schemas = Schemas::new()
             .with::<Mint>()
             .with::<Burn>()
@@ -115,7 +132,8 @@ pub fn init_events() {
             .with::<DecreaseAllowance>()
             .with::<Transfer>()
             .with::<TransferFrom>()
-            .with::<ChangeSecurity>();
+            .with::<ChangeSecurity>()
+            .with::<ChangeEventsMode>();
         casper_event_standard::init(schemas);
     }
 }

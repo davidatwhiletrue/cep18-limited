@@ -81,3 +81,5 @@ pub const ADMIN_LIST: &str = "admin_list";
 pub const MINTER_LIST: &str = "minter_list";
 pub const NONE_LIST: &str = "none_list";
 pub const CHANGE_SECURITY: &str = "change_security";
+pub const EVENTS: &str = "events";
+pub const EVENTS_MODE: &str = "events_mode";

@@ -3,11 +3,13 @@ use core::convert::TryFrom;
 use crate::Cep18Error;
 
 #[repr(u8)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Default)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum EventsMode {
+    #[default]
     NoEvents = 0,
     CES = 1,
+    Native = 2,
 }
 
 impl TryFrom<u8> for EventsMode {
@@ -17,6 +19,7 @@ impl TryFrom<u8> for EventsMode {
         match value {
             0 => Ok(EventsMode::NoEvents),
             1 => Ok(EventsMode::CES),
+            2 => Ok(EventsMode::Native),
             _ => Err(Cep18Error::InvalidEventsMode),
         }
     }

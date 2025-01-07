@@ -2,6 +2,7 @@
 use core::convert::TryInto;
 
 use alloc::{collections::BTreeMap, vec, vec::Vec};
+use core::mem::MaybeUninit;
 use casper_contract::{
     contract_api::{
         self,
@@ -17,7 +18,6 @@ use casper_types::{
     system::CallStackElement,
     ApiError, CLTyped, Key, URef, U256,
 };
-
 use crate::{
     constants::{SECURITY_BADGES, TOTAL_SUPPLY},
     error::Cep18Error,
@@ -60,11 +60,53 @@ fn call_stack_element_to_address(call_stack_element: CallStackElement) -> Key {
     }
 }
 
+/// Returns the call stack.
+pub fn get_call_stack() -> Vec<CallStackElement> {
+    let (call_stack_len, result_size) = {
+        let mut call_stack_len: usize = 0;
+        let mut result_size: usize = 0;
+        let ret = unsafe {
+            #[allow(deprecated)]
+            ext_ffi::casper_load_call_stack(
+                &mut call_stack_len as *mut usize,
+                &mut result_size as *mut usize,
+            )
+        };
+        api_error::result_from(ret).unwrap_or_revert();
+        (call_stack_len, result_size)
+    };
+    if call_stack_len == 0 {
+        return Vec::new();
+    }
+    let bytes = read_host_buffer(result_size).unwrap_or_revert();
+    bytesrepr::deserialize(bytes).unwrap_or_revert()
+}
+fn read_host_buffer_into(dest: &mut [u8]) -> Result<usize, ApiError> {
+    let mut bytes_written = MaybeUninit::uninit();
+    let ret = unsafe {
+        ext_ffi::casper_read_host_buffer(dest.as_mut_ptr(), dest.len(), bytes_written.as_mut_ptr())
+    };
+    // NOTE: When rewriting below expression as `result_from(ret).map(|_| unsafe { ... })`, and the
+    // caller ignores the return value, execution of the contract becomes unstable and ultimately
+    // leads to `Unreachable` error.
+    api_error::result_from(ret)?;
+    Ok(unsafe { bytes_written.assume_init() })
+}
+pub(crate) fn read_host_buffer(size: usize) -> Result<Vec<u8>, ApiError> {
+    let mut dest: Vec<u8> = if size == 0 {
+        Vec::new()
+    } else {
+        let bytes_non_null_ptr = contract_api::alloc_bytes(size);
+        unsafe { Vec::from_raw_parts(bytes_non_null_ptr.as_ptr(), size, size) }
+    };
+    read_host_buffer_into(&mut dest)?;
+    Ok(dest)
+}
 /// Gets the immediate session caller of the current execution.
 ///
 /// This function ensures that Contracts can participate and no middleman (contract) acts for users.
 pub(crate) fn get_immediate_caller_address() -> Result<Key, Cep18Error> {
-    let call_stack = runtime::get_call_stack();
+    let call_stack = get_call_stack();
     call_stack
         .into_iter()
         .rev()

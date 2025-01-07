@@ -1,5 +1,5 @@
 use casper_engine_test_support::{ExecuteRequestBuilder, DEFAULT_ACCOUNT_ADDR};
-use casper_types::{runtime_args, ApiError, Key, RuntimeArgs, U256};
+use casper_types::{runtime_args, AddressableEntityHash, ApiError, Key, RuntimeArgs, U256};
 
 use crate::utility::{
     constants::{
@@ -11,9 +11,7 @@ use crate::utility::{
         cep18_check_allowance_of, make_cep18_approve_request, setup, test_approve_for, TestContext,
     },
 };
-use casper_execution_engine::core::{
-    engine_state::Error as CoreError, execution::Error as ExecError,
-};
+use casper_execution_engine::{engine_state::Error as CoreError, execution::ExecError};
 
 #[test]
 fn should_approve_funds_contract_to_account() {
@@ -102,7 +100,7 @@ fn should_not_transfer_from_without_enough_allowance() {
 
     let approve_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         sender,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_APPROVE,
         cep18_approve_args,
     )
@@ -110,7 +108,7 @@ fn should_not_transfer_from_without_enough_allowance() {
 
     let transfer_from_request_1 = ExecuteRequestBuilder::contract_call_by_hash(
         sender,
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         METHOD_TRANSFER_FROM,
         cep18_transfer_from_args,
     )
@@ -148,7 +146,7 @@ fn test_decrease_allowance() {
         make_cep18_approve_request(sender, &cep18_token, spender, allowance_amount_1);
     let decrease_allowance_request = ExecuteRequestBuilder::contract_call_by_hash(
         sender.into_account().unwrap(),
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         DECREASE_ALLOWANCE,
         runtime_args! {
             ARG_SPENDER => spender,
@@ -158,7 +156,7 @@ fn test_decrease_allowance() {
     .build();
     let increase_allowance_request = ExecuteRequestBuilder::contract_call_by_hash(
         sender.into_account().unwrap(),
-        cep18_token,
+        AddressableEntityHash::new(cep18_token.value()),
         INCREASE_ALLOWANCE,
         runtime_args! {
             ARG_SPENDER => spender,

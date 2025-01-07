@@ -1,3 +1,7 @@
+# WIP. DO NOT USE THIS BRANCH IN PRODUCTION 
+
+This branch is for testing CEP-18 in Casper 2.0 rc5. Do not use in production.
+
 # Casper Fungible Tokens (CEP-18 Standard)
 
 This repository contains a reference contract implementation and tests for fungible tokens on a Casper network, following the [CEP-18 standard](https://github.com/casper-network/ceps/pull/18).
